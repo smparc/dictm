@@ -1,17 +1,16 @@
-# Python
 __pycache__/
 *.pyc
+*.pyo
 .env
+.venv/
 venv/
-env/
-
-# Generated CPT file
-scdb_cpts.pkl
-
-# Data - Data files should not be in Git
-*.csv
-
-# IDE / OS
-.vscode/
-.idea/
+*.egg-info/
 .DS_Store
+
+# Data and saved models (download separately — see data/README.md)
+data/*.csv
+data/cpts.json
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
