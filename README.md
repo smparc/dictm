@@ -1,6 +1,6 @@
-# Supreme Court Decision Prediction — Bayesian Network Model
+# dictm: Supreme Court Decision Prediction — Bayesian Network Model
 
-> A probabilistic model that predicts U.S. Supreme Court case outcomes using Bayesian inference over historical case data.
+> A probabilistic model that predicts U.S. Supreme Court case outcomes using Bayesian inference over historical case data. The name **"dictm"** comes from the short phrase in latin *"obiter dictum"* which refers to incidental comments or observations made by a judge in a court opinion.
 
 ---
 
