@@ -15,10 +15,22 @@ By encoding legal domain structure into a directed graphical model and learning 
 ## Features
 
 - **Bayesian Network with Hand-Crafted Structure** — Domain-informed graph modeling relationships between case properties, court context, and outcomes
-- **Conditional Probability Table (CPT) Learning** — Probabilities computed directly from historical case frequencies
-- **Rejection Sampling Inference** — Probabilistic inference over the network given observed case variables
-- **Top-3 Accuracy Evaluation** — Measures whether the true outcome appears among the three highest-probability predictions
-- **Full Outcome Distribution** — Returns a probability distribution across all 11 possible Supreme Court dispositions
+- **Conditional Probability Table (CPT) Learning** — Vectorized computation from historical case frequencies with Laplace smoothing
+- **Three Inference Engines:**
+  - **Rejection Sampling** — Baseline probabilistic inference
+  - **Likelihood Weighting** — Efficient importance-sampling that avoids rejection
+  - **Gibbs Sampling (MCMC)** — Markov Chain Monte Carlo with burn-in; converges to exact posterior
+- **Structure Learning** — Independence testing via $D(A,B) = |P(A,B) - P(A)P(B)|$ and mutual information analysis
+- **Data Preprocessing Pipeline** — Column validation, missing data analysis, rare category detection, row filtering
+- **Comprehensive Evaluation:**
+  - Top-k accuracy (k=1, 3, 5)
+  - Per-class precision, recall, F1 classification report
+  - k-fold cross-validation
+  - Three-way inference method comparison
+  - Calibration analysis (ECE + reliability diagrams)
+- **Chronological Train/Test Split** — Methodologically correct temporal splitting (no future data leakage)
+- **Publication-Quality Visualizations** — Network DAG, confusion matrix, calibration diagram, dependency heatmap
+- **CLI with Multiple Modes** — Train/evaluate, predict, cross-validate, dependency analysis, optional plotting
 
 ---
 
@@ -30,22 +42,22 @@ The Bayesian Network is organized into four layers:
 
 ```
 Court Information
-    └── chief_justice
+    └── chief_justice
 
 Case Properties
-    ├── issue_area
-    ├── law_type
-    ├── case_supplement
-    └── lower_court_disposition
+    ├── issue_area
+    ├── law_type
+    ├── case_supplement
+    └── lower_court_disposition
 
 Intermediate Nodes
-    ├── decision_type
-    ├── precedent_alteration
-    ├── split_vote
-    └── unconstitutionality
+    ├── decision_type
+    ├── precedent_alteration
+    ├── split_vote
+    └── unconstitutionality
 
 Final Outcome
-    └── final_disposition
+    └── final_disposition
 ```
 
 ### Conditional Probability Tables
@@ -107,27 +119,75 @@ The model's 73% Top-3 accuracy represents a meaningful improvement over the ~27%
 
 ## Tech Stack
 
-- **Language:** Python
+- **Language:** Python 3.9+
 - **Dataset:** [The Supreme Court Database](http://scdb.wustl.edu/documentation.php) — Washington University Law, 2024
 - **Core Libraries:** NumPy, Pandas
-- **Visualization:** GPT-assisted layout + Matplotlib
+- **Visualization:** Matplotlib, Seaborn
+- **Testing:** pytest, pytest-cov
+- **Build:** pyproject.toml (PEP 621)
+- **Inference:** Rejection Sampling, Likelihood Weighting, Gibbs Sampling (MCMC)
+- **Logging:** Python stdlib `logging`
 
 ---
 
 ## Project Structure
 
 ```
-supreme-court-predictor/
+dictm/
 ├── data/
-│   └── scdb_cases.csv            # Supreme Court Database
+│   └── scdb_cases.csv              # Supreme Court Database
 ├── src/
-│   ├── network_structure.py      # Graph definition & variable relationships
-│   ├── cpt_builder.py            # Conditional probability table construction
-│   ├── inference.py              # Rejection sampling implementation
-│   └── evaluate.py               # Top-3 accuracy evaluation
-├── notebooks/
-│   └── exploration.ipynb         # Data exploration & CPT visualization
+│   ├── __init__.py                 # Package exports
+│   ├── network_structure.py        # Graph definition & variable relationships
+│   ├── cpt_builder.py              # Vectorized CPT construction with Laplace smoothing
+│   ├── inference.py                # Rejection Sampling, Likelihood Weighting, Gibbs (MCMC)
+│   ├── evaluate.py                 # Top-k, classification report, k-fold CV, calibration
+│   ├── structure_learning.py       # Independence tests & mutual information
+│   ├── preprocessing.py            # Data validation, cleaning, missing data analysis
+│   └── visualize.py                # Publication-quality plots
+├── tests/
+│   ├── conftest.py                 # Shared fixtures
+│   ├── test_cpt_builder.py         # CPT construction & serialization tests
+│   ├── test_inference.py           # All three inference engine tests
+│   ├── test_evaluate.py            # Evaluation metric tests
+│   └── test_structure_learning.py  # Dependency analysis tests
+├── figures/                        # Generated visualizations (--visualize)
+├── notebook/
+│   └── exploration.ipynb           # Data exploration & CPT visualization
+├── main.py                         # CLI entry point
+├── pyproject.toml                  # Build config & pytest settings
+├── requirements.txt
 └── README.md
+```
+
+---
+
+## Usage
+
+```bash
+# Train and evaluate (chronological split, default)
+python main.py --mode train_eval
+
+# Train with random split instead
+python main.py --mode train_eval --split random
+
+# Train and generate visualizations
+python main.py --mode train_eval --visualize
+
+# Interactive prediction
+python main.py --mode predict
+
+# k-fold cross-validation
+python main.py --mode cross_validate
+
+# Analyze variable dependencies
+python main.py --mode dependency
+
+# Enable debug logging
+python main.py --mode train_eval --verbose
+
+# Run tests
+pytest
 ```
 
 ---
