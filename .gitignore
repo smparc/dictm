@@ -13,4 +13,7 @@ data/cpts.json
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
-notebooks/.ipynb_checkpoints/
+notebook/.ipynb_checkpoints/
+
+# Generated visualizations
+figures/
