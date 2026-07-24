@@ -3,13 +3,16 @@ network_structure.py
 --------------------
 Defines the Bayesian Network structure for Supreme Court case prediction.
 
+
 Network layers
 --------------
 Layer 1 — Court Information
     chief_justice
 
+
 Layer 2 — Case Properties (root nodes)
     issue_area, law_type, case_supplement, lower_court_disposition
+
 
 Layer 3 — Intermediate Nodes (children of case properties)
     decision_type        <- issue_area, law_type
@@ -17,12 +20,15 @@ Layer 3 — Intermediate Nodes (children of case properties)
     split_vote           <- issue_area, law_type
     unconstitutional     <- law_type, case_supplement
 
+
 Layer 4 — Final Outcome
     final_disposition    <- decision_type, precedent_alteration,
                             split_vote, unconstitutional, chief_justice
 """
 
+
 from dataclasses import dataclass, field
+
 
 
 @dataclass
@@ -32,13 +38,16 @@ class Node:
     parents: list = field(default_factory=list)
     description: str = ""
 
+
     def is_root(self) -> bool:
         return len(self.parents) == 0
+
 
 
 # ---------------------------------------------------------------------------
 # Node definitions
 # ---------------------------------------------------------------------------
+
 
 NODES = {
     # ── Layer 1: Court Information ──────────────────────────────────────────
@@ -47,6 +56,7 @@ NODES = {
         parents=[],
         description="Chief Justice presiding over the case",
     ),
+
 
     # ── Layer 2: Case Properties (root nodes) ───────────────────────────────
     "issue_area": Node(
@@ -70,6 +80,7 @@ NODES = {
         description="How the lower court disposed of the case",
     ),
 
+
     # ── Layer 3: Intermediate Nodes ──────────────────────────────────────────
     "decision_type": Node(
         name="decision_type",
@@ -92,6 +103,7 @@ NODES = {
         description="Whether the case involves an unconstitutionality finding",
     ),
 
+
     # ── Layer 4: Final Outcome ───────────────────────────────────────────────
     "final_disposition": Node(
         name="final_disposition",
@@ -105,6 +117,7 @@ NODES = {
         description="Final Supreme Court case disposition (the prediction target)",
     ),
 }
+
 
 # Topological order for CPT construction and inference
 TOPOLOGICAL_ORDER = [
@@ -120,6 +133,7 @@ TOPOLOGICAL_ORDER = [
     "final_disposition",
 ]
 
+
 # Column names in the SCDB dataset that map to our node names
 COLUMN_MAP = {
     "chief_justice":           "chief",
@@ -133,6 +147,7 @@ COLUMN_MAP = {
     "unconstitutional":        "declarationUncon",
     "final_disposition":       "caseDisposition",
 }
+
 
 # Human-readable labels for final_disposition values
 DISPOSITION_LABELS = {
