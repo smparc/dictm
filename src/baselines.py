@@ -140,11 +140,18 @@ class _SklearnBaseline(_BaseBaseline):
 
         X = self._encode(train[self.feature_cols])
         self._columns = X.columns
-        y = np.array([_py(v) for v in train[target_col]], dtype=object)
+
+        # Labels are fitted as strings. An object-dtype array of floats makes
+        # scikit-learn's target-type inference report "unknown" and refuse to
+        # fit; strings are unambiguous, and the original values are restored via
+        # this lookup so the rest of the pipeline still sees native class values.
+        values = [_py(v) for v in train[target_col]]
+        self._value_by_label = {str(v): v for v in values}
+        y = np.array([str(v) for v in values])
 
         self.model = model
-        self.model.fit(X.to_numpy(), y)
-        self.classes = [_py(c) for c in self.model.classes_]
+        self.model.fit(X.to_numpy(dtype=float), y)
+        self.classes = [self._value_by_label[label] for label in self.model.classes_]
 
     @staticmethod
     def _encode(frame: pd.DataFrame) -> pd.DataFrame:
@@ -158,7 +165,7 @@ class _SklearnBaseline(_BaseBaseline):
                 row[col] = evidence.get(node, "__absent__")
         encoded = self._encode(pd.DataFrame([row]))
         encoded = encoded.reindex(columns=self._columns, fill_value=0)
-        return encoded.to_numpy()
+        return encoded.to_numpy(dtype=float)
 
     def query(self, query_var: str, evidence: dict, n_samples: int | None = None) -> dict:
         probs = self.model.predict_proba(self._encode_evidence(evidence))[0]
