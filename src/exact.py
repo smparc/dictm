@@ -244,7 +244,7 @@ class VariableEliminationEngine:
         return {
             value: float(prob)
             for value, prob in sorted(
-                zip(domain, probs), key=lambda pair: -pair[1]
+                zip(domain, probs, strict=True), key=lambda pair: -pair[1]
             )
         }
 

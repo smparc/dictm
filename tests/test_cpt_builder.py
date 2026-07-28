@@ -5,15 +5,12 @@ import json
 import os
 import tempfile
 
-
 import numpy as np
 import pandas as pd
 import pytest
 
-
 from src.cpt_builder import CPTBuilder
 from src.network_structure import TOPOLOGICAL_ORDER
-
 
 
 class TestCPTBuilder:
@@ -64,7 +61,7 @@ class TestCPTBuilder:
         for node in TOPOLOGICAL_ORDER:
             if node in builder_smooth.cpts:
                 cpt = builder_smooth.cpts[node]
-                for val, prob in cpt.items():
+                for _val, prob in cpt.items():
                     assert prob > 0, f"Smoothed {node} has 0 probability"
 
 
@@ -147,6 +144,7 @@ class TestCPTSerialization:
         from the float 2.0 once numpy types had been stringified.
         """
         import re
+
         import src.cpt_builder as mod
 
         source = open(mod.__file__, encoding="utf-8").read()

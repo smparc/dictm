@@ -14,15 +14,10 @@ Handles:
 
 
 import logging
-from collections import Counter
 
-
-import numpy as np
 import pandas as pd
 
-
-from src.network_structure import COLUMN_MAP, TOPOLOGICAL_ORDER, NODES
-
+from src.network_structure import COLUMN_MAP, TOPOLOGICAL_ORDER
 
 log = logging.getLogger(__name__)
 
@@ -207,7 +202,7 @@ def preprocess(
         report = missing_data_report(df)
         has_missing = report[report["n_missing"] > 0]
         if not has_missing.empty:
-            print(f"\n  Remaining missing values:")
+            print("\n  Remaining missing values:")
             for _, r in has_missing.iterrows():
                 print(f"    {r['variable']:<25} {r['n_missing']:>6} ({r['pct_missing']:.1f}%)")
 
@@ -231,13 +226,13 @@ def print_data_summary(df: pd.DataFrame):
         return
 
 
-    print(f"\n── Data Summary ─────────────────────────────────────────")
+    print("\n── Data Summary ─────────────────────────────────────────")
     print(f"  Total cases: {len(df)}")
 
 
     from src.network_structure import DISPOSITION_LABELS
     counts = df[target_col].value_counts().sort_index()
-    print(f"\n  Disposition distribution:")
+    print("\n  Disposition distribution:")
     for val, count in counts.items():
         label = DISPOSITION_LABELS.get(int(val), str(val))
         pct = count / len(df) * 100

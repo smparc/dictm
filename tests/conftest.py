@@ -6,7 +6,7 @@ import pytest
 
 from src.cpt_builder import CPTBuilder
 from src.exact import VariableEliminationEngine
-from src.inference import RejectionSampler, LikelihoodWeightingSampler, GibbsSampler
+from src.inference import GibbsSampler, LikelihoodWeightingSampler, RejectionSampler
 from src.preprocessing import add_derived_columns
 
 

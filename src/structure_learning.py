@@ -19,15 +19,11 @@ grounded measure of statistical dependence.
 
 import itertools
 import logging
-from collections import defaultdict
-
 
 import numpy as np
 import pandas as pd
 
-
-from src.network_structure import COLUMN_MAP, NODES, TOPOLOGICAL_ORDER
-
+from src.network_structure import COLUMN_MAP, NODES
 
 log = logging.getLogger(__name__)
 
@@ -406,7 +402,7 @@ def hill_climb_structure(
     score = scorer.graph_score(graph)
     history = [round(score, 2)]
 
-    for iteration in range(max_iterations):
+    for _ in range(max_iterations):
         best_move = None
         best_delta = 1e-10
 
@@ -569,7 +565,7 @@ def _log_likelihood(scorer: BICScorer, graph: dict) -> float:
 
 def print_structure_comparison(result: dict):
     """Print the hand-crafted vs learned structure comparison."""
-    print(f"\n── Structure: hand-crafted vs learned ───────────────────")
+    print("\n── Structure: hand-crafted vs learned ───────────────────")
 
     hand, learned = result["handcrafted"], result["learned"]
     print(f"  {'':<18} {'BIC':>14} {'Test log-lik':>14} {'Edges':>7}")
@@ -581,12 +577,12 @@ def print_structure_comparison(result: dict):
         print(f"  {label:<18} {entry['bic']:>14.2f} {test_str} {n_edges:>7}")
 
     if result["edges_only_in_learned"]:
-        print(f"\n  Edges the search found that the domain DAG lacks:")
+        print("\n  Edges the search found that the domain DAG lacks:")
         for parent, child in result["edges_only_in_learned"][:15]:
             print(f"    {parent:<24} -> {child}")
 
     if result["edges_only_in_handcrafted"]:
-        print(f"\n  Domain edges the search did not recover:")
+        print("\n  Domain edges the search did not recover:")
         for parent, child in result["edges_only_in_handcrafted"][:15]:
             print(f"    {parent:<24} -> {child}")
 

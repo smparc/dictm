@@ -22,7 +22,6 @@ from src.evaluate import (
 )
 from src.network_structure import COLUMN_MAP, FEATURE_SETS
 
-
 CLASSES = [1, 2, 3]
 
 
@@ -143,13 +142,16 @@ class TestBootstrapCI:
         rng = np.random.default_rng(4)
         y = rng.choice(CLASSES, size=50)
         P = rng.dirichlet(np.ones(3), size=50)
-        fn = lambda a, b, c: top_k_from_probs(a, b, c, 1)
+        def fn(a, b, c):
+            return top_k_from_probs(a, b, c, 1)
+
         assert bootstrap_ci(fn, y, P, CLASSES, n_boot=100, seed=7) == \
                bootstrap_ci(fn, y, P, CLASSES, n_boot=100, seed=7)
 
     def test_narrows_as_sample_size_grows(self):
         rng = np.random.default_rng(5)
-        fn = lambda a, b, c: top_k_from_probs(a, b, c, 1)
+        def fn(a, b, c):
+            return top_k_from_probs(a, b, c, 1)
 
         widths = []
         for n in (40, 800):

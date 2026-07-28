@@ -30,7 +30,6 @@ Layer 4 — Final Outcome
 from dataclasses import dataclass, field
 
 
-
 @dataclass
 class Node:
     """Represents a single variable (node) in the Bayesian Network."""

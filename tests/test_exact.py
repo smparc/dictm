@@ -17,7 +17,7 @@ from src.exact import (
     VariableEliminationEngine,
     total_variation_distance,
 )
-from src.inference import RejectionSampler, LikelihoodWeightingSampler, GibbsSampler
+from src.inference import GibbsSampler, LikelihoodWeightingSampler, RejectionSampler
 
 
 class TestFactor:

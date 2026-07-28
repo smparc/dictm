@@ -39,13 +39,18 @@ import pandas as pd
 from src.baselines import build_baselines
 from src.cpt_builder import CPTBuilder
 from src.evaluate import (
-    build_evidence, distribution_summary, evaluate_model,
-    print_results_table, print_classification_report, print_calibration_report,
-    k_fold_cross_validation, compare_inference_methods, sampler_convergence,
+    build_evidence,
+    compare_inference_methods,
+    distribution_summary,
+    evaluate_model,
+    k_fold_cross_validation,
+    print_calibration_report,
+    print_classification_report,
+    print_results_table,
+    sampler_convergence,
 )
 from src.exact import VariableEliminationEngine
-from src.inference import LikelihoodWeightingSampler
-from src.network_structure import COLUMN_MAP, DISPOSITION_LABELS, FEATURE_SETS
+from src.network_structure import FEATURE_SETS
 
 # ---------------------------------------------------------------------------
 # Config
@@ -145,7 +150,7 @@ def random_split(df: pd.DataFrame, test_fraction: float = TEST_FRACTION, seed: i
 def split_data(df: pd.DataFrame, args):
     if args.split == "chronological":
         train, test = chronological_split(df, args.test_frac)
-        print(f"  Chronological split (train on earlier terms, test on most recent)")
+        print("  Chronological split (train on earlier terms, test on most recent)")
     else:
         train, test = random_split(df, args.test_frac, RANDOM_SEED)
         print(f"  Random split (seed={RANDOM_SEED})")
@@ -195,7 +200,7 @@ def mode_train_eval(args):
             for baseline in build_baselines(df_train, evidence_vars=track)
         ]
         results.append(
-            evaluate_model(df_test, engine, name=f"Bayesian Network",
+            evaluate_model(df_test, engine, name="Bayesian Network",
                            evidence_vars=track, binary=binary, ks=ks,
                            n_boot=args.n_boot, seed=RANDOM_SEED)
         )
@@ -228,7 +233,7 @@ def _print_track_verdict(all_results: dict, ks):
         return
 
     k = 3 if 3 in ks else ks[0]
-    print(f"\n── Verdict ──────────────────────────────────────────────")
+    print("\n── Verdict ──────────────────────────────────────────────")
 
     for track, results in all_results.items():
         marginal = next((r for r in results if r["name"].startswith("Marginal")), None)
@@ -253,8 +258,12 @@ def _print_track_verdict(all_results: dict, ks):
 
 def _generate_figures(df_test, builder, engine, all_results, args):
     from src.visualize import (
-        plot_network_dag, plot_confusion_matrix, plot_calibration_diagram,
-        plot_method_comparison, plot_results_comparison, plot_convergence,
+        plot_calibration_diagram,
+        plot_confusion_matrix,
+        plot_convergence,
+        plot_method_comparison,
+        plot_network_dag,
+        plot_results_comparison,
     )
 
     print("\n── Generating Visualizations ────────────────────────────")
@@ -321,7 +330,7 @@ def mode_predict(args):
             evidence[node_name] = raw
 
     print(f"\n  Evidence provided: {evidence}")
-    print(f"\n── Running Exact Inference ──────────────────────────────")
+    print("\n── Running Exact Inference ──────────────────────────────")
     distribution_summary(engine, evidence)
 
 
@@ -394,7 +403,7 @@ def mode_convergence(args):
     track = args.track if args.track != "both" else "ex_ante"
     evidence = build_evidence(df_test.iloc[0], evidence_vars=track)
 
-    print(f"\n── Sampler Convergence to the Exact Posterior ───────────")
+    print("\n── Sampler Convergence to the Exact Posterior ───────────")
     print(f"  Evidence ({track}): {evidence}\n")
 
     curves = sampler_convergence(builder, evidence)

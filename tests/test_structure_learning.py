@@ -5,14 +5,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 from src.structure_learning import (
     compute_dependency_score,
     compute_mutual_information,
     dependency_matrix,
     find_top_dependencies,
 )
-
 
 
 @pytest.fixture

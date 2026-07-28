@@ -34,12 +34,12 @@ import numpy as np
 import pandas as pd
 
 from src.cpt_builder import CPTBuilder, _sort_key
-from src.inference import RejectionSampler, LikelihoodWeightingSampler, GibbsSampler
+from src.inference import GibbsSampler, LikelihoodWeightingSampler, RejectionSampler
 from src.network_structure import (
+    BINARY_LABELS,
     COLUMN_MAP,
     DISPOSITION_LABELS,
     FEATURE_SETS,
-    BINARY_LABELS,
     to_binary_disposition,
 )
 
@@ -491,8 +491,8 @@ def print_results_table(results: list[dict], ks=(1, 3, 5)):
         line += f" {r['log_loss']:>9.4f} {r['brier']:>7.4f} {r['ece']:>7.4f} {auc_str}"
         print(line)
 
-    print(f"\n  Top-k cells show the point estimate with a bootstrap 95% CI.")
-    print(f"  Log-loss and Brier are proper scoring rules — lower is better.")
+    print("\n  Top-k cells show the point estimate with a bootstrap 95% CI.")
+    print("  Log-loss and Brier are proper scoring rules — lower is better.")
 
 
 def print_classification_report(report: dict):
@@ -520,7 +520,7 @@ def print_calibration_report(cal: dict):
     """Pretty-print the calibration analysis."""
     cal = cal.get("calibration", cal)
 
-    print(f"\n── Calibration Analysis ─────────────────────────────────")
+    print("\n── Calibration Analysis ─────────────────────────────────")
     print(f"  Expected Calibration Error (ECE): {cal['ece']:.4f}")
     print(f"  Mean Confidence:  {cal.get('mean_confidence', 0):.4f}")
     print(f"  Overall Accuracy: {cal.get('overall_accuracy', 0):.4f}")
@@ -530,7 +530,7 @@ def print_calibration_report(cal: dict):
         print(f"  {'─' * 50}")
         edges = cal["bin_edges"]
         for i, (conf, acc, cnt) in enumerate(
-            zip(cal["bin_confidences"], cal["bin_accuracies"], cal["bin_counts"])
+            zip(cal["bin_confidences"], cal["bin_accuracies"], cal["bin_counts"], strict=True)
         ):
             if cnt > 0:
                 print(f"  {edges[i]:.1f}-{edges[i+1]:.1f}   {conf:>10.3f}   "
@@ -737,7 +737,7 @@ def compare_inference_methods(
     """
     import time
 
-    from src.exact import VariableEliminationEngine, total_variation_distance
+    from src.exact import VariableEliminationEngine
 
     engines = [
         ("Exact (Var. Elimination)", VariableEliminationEngine),

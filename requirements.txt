@@ -1,7 +1,12 @@
+# Runtime dependencies. The authoritative list lives in pyproject.toml; this
+# file mirrors it for `pip install -r requirements.txt` workflows.
+#
+#   pip install -e ".[dev]"       # + pytest, pytest-cov, ruff
+#   pip install -e ".[serve]"     # + fastapi, uvicorn
+#   pip install -e ".[notebook]"  # + jupyter
+
 numpy>=1.24
 pandas>=2.0
 matplotlib>=3.7
 seaborn>=0.12
-jupyter>=1.0
-pytest>=7.0
-pytest-cov>=4.0
+scikit-learn>=1.3

@@ -10,10 +10,10 @@ import numpy as np
 import pytest
 
 from src.baselines import (
-    MarginalBaseline,
-    MajorityClassBaseline,
-    LogisticRegressionBaseline,
     GradientBoostingBaseline,
+    LogisticRegressionBaseline,
+    MajorityClassBaseline,
+    MarginalBaseline,
     build_baselines,
 )
 from src.evaluate import evaluate_model, predict_distributions, top_k_from_probs

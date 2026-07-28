@@ -45,7 +45,7 @@ import logging
 import numpy as np
 import pandas as pd
 
-from src.network_structure import NODES, TOPOLOGICAL_ORDER, COLUMN_MAP
+from src.network_structure import COLUMN_MAP, NODES, TOPOLOGICAL_ORDER
 
 log = logging.getLogger(__name__)
 

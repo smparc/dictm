@@ -30,12 +30,11 @@ the inference engines, so they drop straight into `evaluate_model`.
 """
 
 import logging
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 
-from src.cpt_builder import _py, _sort_key
+from src.cpt_builder import _py
 from src.network_structure import COLUMN_MAP, FEATURE_SETS
 
 log = logging.getLogger(__name__)
@@ -169,7 +168,7 @@ class _SklearnBaseline(_BaseBaseline):
 
     def query(self, query_var: str, evidence: dict, n_samples: int | None = None) -> dict:
         probs = self.model.predict_proba(self._encode_evidence(evidence))[0]
-        return {c: float(p) for c, p in zip(self.classes, probs)}
+        return {c: float(p) for c, p in zip(self.classes, probs, strict=True)}
 
 
 class LogisticRegressionBaseline(_SklearnBaseline):

@@ -4,9 +4,7 @@
 import numpy as np
 import pytest
 
-
-from src.inference import RejectionSampler, LikelihoodWeightingSampler, GibbsSampler
-
+from src.inference import GibbsSampler, LikelihoodWeightingSampler, RejectionSampler
 
 
 class TestRejectionSampler:
@@ -78,7 +76,7 @@ class TestLikelihoodWeightingSampler:
 
     def test_probabilities_non_negative(self, lw_sampler):
         dist = lw_sampler.query("final_disposition", evidence={}, n_samples=500)
-        for val, prob in dist.items():
+        for _val, prob in dist.items():
             assert prob >= 0
 
 
@@ -156,7 +154,7 @@ class TestGibbsSampler:
 
     def test_probabilities_non_negative(self, gibbs_sampler):
         dist = gibbs_sampler.query("final_disposition", evidence={}, n_samples=500, burn_in=100)
-        for val, prob in dist.items():
+        for _val, prob in dist.items():
             assert prob >= 0
 
 

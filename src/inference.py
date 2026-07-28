@@ -30,11 +30,12 @@ Three algorithms are implemented:
 
 
 import logging
-import numpy as np
 from collections import defaultdict
-from src.network_structure import NODES, TOPOLOGICAL_ORDER
-from src.cpt_builder import CPTBuilder
 
+import numpy as np
+
+from src.cpt_builder import CPTBuilder
+from src.network_structure import NODES, TOPOLOGICAL_ORDER
 
 log = logging.getLogger(__name__)
 

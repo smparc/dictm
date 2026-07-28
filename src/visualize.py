@@ -13,21 +13,21 @@ Generates:
 """
 
 
-import os
 import logging
+import os
 
-
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import seaborn as sns
 
-
 from src.network_structure import (
-    NODES, TOPOLOGICAL_ORDER, DISPOSITION_LABELS, BINARY_LABELS,
+    BINARY_LABELS,
+    DISPOSITION_LABELS,
+    NODES,
+    TOPOLOGICAL_ORDER,
 )
-
 
 log = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ def plot_confusion_matrix(
 
     index = {c: i for i, c in enumerate(classes)}
     matrix = np.zeros((len(classes), len(classes)), dtype=int)
-    for true_val, pred_val in zip(y_true, predicted):
+    for true_val, pred_val in zip(y_true, predicted, strict=True):
         if true_val in index and pred_val in index:
             matrix[index[true_val], index[pred_val]] += 1
 
@@ -234,7 +234,6 @@ def plot_calibration_diagram(cal: dict, save: bool = True):
 
     edges = cal["bin_edges"]
     accs = cal["bin_accuracies"]
-    confs = cal["bin_confidences"]
     counts = cal["bin_counts"]
 
 
@@ -303,7 +302,7 @@ def plot_prediction_distribution(
     ax.invert_yaxis()
 
 
-    for bar, prob in zip(bars, probs):
+    for bar, prob in zip(bars, probs, strict=True):
         ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height() / 2,
                 f"{prob:.3f}", va="center", fontsize=8)
 
@@ -346,7 +345,7 @@ def plot_method_comparison(results: dict, save: bool = True):
                     edgecolor="#333")
     ax1.set_ylabel("Top-k Accuracy (%)")
     ax1.set_title("Accuracy Comparison")
-    for bar, acc in zip(bars1, accuracies):
+    for bar, acc in zip(bars1, accuracies, strict=True):
         ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
                  f"{acc:.1f}%", ha="center", fontsize=10)
 
@@ -356,7 +355,7 @@ def plot_method_comparison(results: dict, save: bool = True):
                     edgecolor="#333")
     ax2.set_ylabel("Time (seconds)")
     ax2.set_title("Speed Comparison")
-    for bar, t in zip(bars2, times):
+    for bar, t in zip(bars2, times, strict=True):
         ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.1,
                  f"{t:.1f}s", ha="center", fontsize=10)
 

@@ -5,17 +5,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 from src.evaluate import (
-    top_k_accuracy,
     build_evidence,
+    calibration_analysis,
+    classification_report,
     distribution_summary,
     multi_k_accuracy,
-    classification_report,
-    calibration_analysis,
+    top_k_accuracy,
 )
 from src.network_structure import COLUMN_MAP
-
 
 
 class TestTopKAccuracy:
