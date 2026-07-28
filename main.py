@@ -183,7 +183,16 @@ def mode_train_eval(args):
     builder.save(args.model_path)
     print(f"  Saved model to {args.model_path}")
 
+    # Measure backoff while the engine materialises its factors. That pass
+    # touches every parent configuration in the network, so the rate is a
+    # direct read on CPT sparsity. Measuring it during evaluation instead would
+    # always report 0%, because by then the factors are already built.
+    builder.reset_backoff_stats()
     engine = VariableEliminationEngine(builder)
+    backoff_rate = builder.backoff_rate
+    print(f"  CPT backoff rate: {backoff_rate*100:.2f}% of parent configurations "
+          f"were unseen in training and fell back to a shorter parent set")
+
     binary = args.task == "binary"
     ks = (1, 3) if binary else (1, 3, 5)
 
@@ -192,7 +201,6 @@ def mode_train_eval(args):
         print(f"\n══ Track: {track} ══════════════════════════════════════")
         print(f"  Evidence: {', '.join(FEATURE_SETS[track])}")
 
-        builder.reset_backoff_stats()
         results = [
             evaluate_model(df_test, baseline, name=baseline.name,
                            evidence_vars=track, binary=binary, ks=ks,
@@ -206,8 +214,6 @@ def mode_train_eval(args):
         )
 
         print_results_table(results, ks=ks)
-        print(f"\n  CPT backoff rate: {builder.backoff_rate*100:.2f}% of conditional "
-              f"queries fell back to a shorter parent set")
 
         network_result = results[-1]
         print_classification_report(network_result)
