@@ -400,3 +400,110 @@ def plot_dependency_heatmap(dep_matrix: pd.DataFrame, method: str = "deviation",
         print(f"  Saved: {path}")
     plt.close(fig)
     return fig
+
+# ---------------------------------------------------------------------------
+# 7. Model Comparison (results table as a chart)
+# ---------------------------------------------------------------------------
+
+
+def plot_results_comparison(
+    results: list,
+    k: int = 3,
+    filename: str = "results_comparison.png",
+    save: bool = True,
+):
+    """
+    Bar chart of Top-k accuracy with bootstrap CIs, plus log-loss alongside.
+
+    The marginal baseline is drawn as a dashed reference line across the
+    accuracy panel: any bar that fails to clear it belongs to a model that has
+    learned nothing the base rate did not already supply.
+    """
+    _ensure_output_dir()
+
+    names = [r["name"] for r in results]
+    key = f"top_{k}"
+    accuracies = [r.get(key, 0.0) * 100 for r in results]
+    errors = np.array([
+        [max(0.0, r.get(key, 0.0) * 100 - r.get(f"{key}_ci", (0, 0))[0] * 100) for r in results],
+        [max(0.0, r.get(f"{key}_ci", (0, 0))[1] * 100 - r.get(key, 0.0) * 100) for r in results],
+    ])
+    log_losses = [r.get("log_loss", np.nan) for r in results]
+
+    marginal = next((r for r in results if r["name"].startswith("Marginal")), None)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    colors = ["#90a4ae" if r["name"].startswith(("Marginal", "Majority"))
+              else "#42a5f5" for r in results]
+    colors[-1] = "#ef5350"
+
+    ax1.bar(range(len(names)), accuracies, yerr=errors, capsize=4,
+            color=colors, edgecolor="#333")
+    if marginal is not None:
+        ax1.axhline(marginal[key] * 100, ls="--", lw=1.5, color="#333",
+                    label="Marginal baseline")
+        ax1.legend(loc="lower right", fontsize=9)
+    ax1.set_xticks(range(len(names)))
+    ax1.set_xticklabels(names, rotation=30, ha="right", fontsize=9)
+    ax1.set_ylabel(f"Top-{k} Accuracy (%)")
+    ax1.set_title(f"Top-{k} Accuracy (95% bootstrap CI)")
+
+    ax2.bar(range(len(names)), log_losses, color=colors, edgecolor="#333")
+    if marginal is not None:
+        ax2.axhline(marginal["log_loss"], ls="--", lw=1.5, color="#333")
+    ax2.set_xticks(range(len(names)))
+    ax2.set_xticklabels(names, rotation=30, ha="right", fontsize=9)
+    ax2.set_ylabel("Log-loss (lower is better)")
+    ax2.set_title("Log-loss — a proper scoring rule")
+
+    n_test = results[0].get("n_test", "?")
+    plt.suptitle(f"Model comparison (n = {n_test})", fontsize=14)
+    plt.tight_layout()
+
+    if save:
+        path = os.path.join(OUTPUT_DIR, filename)
+        fig.savefig(path, bbox_inches="tight")
+        print(f"  Saved: {path}")
+    plt.close(fig)
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# 8. Sampler Convergence
+# ---------------------------------------------------------------------------
+
+
+def plot_convergence(curves: dict, filename: str = "sampler_convergence.png", save: bool = True):
+    """
+    Total-variation distance from the exact posterior against sample count.
+
+    This is the plot that justifies implementing three samplers: it shows them
+    converging to a *known* answer at different rates, rather than merely
+    agreeing with one another.
+    """
+    _ensure_output_dir()
+
+    counts = curves.get("_sample_counts", [])
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    for name, distances in curves.items():
+        if name.startswith("_"):
+            continue
+        ax.plot(counts, distances, marker="o", lw=2, label=name)
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("Samples")
+    ax.set_ylabel("Total-variation distance from exact posterior")
+    ax.set_title("Sampler convergence to the exact posterior")
+    ax.grid(True, which="both", alpha=0.3)
+    ax.legend()
+
+    plt.tight_layout()
+    if save:
+        path = os.path.join(OUTPUT_DIR, filename)
+        fig.savefig(path, bbox_inches="tight")
+        print(f"  Saved: {path}")
+    plt.close(fig)
+    return fig
