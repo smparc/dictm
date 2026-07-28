@@ -230,7 +230,12 @@ class VariableEliminationEngine:
         if result is None:
             return {v: 1.0 / len(domain) for v in domain}
 
-        table = result._aligned([query_var]).reshape(-1)
+        # Any variable that survived elimination (disconnected components can
+        # leave one behind) is marginalised away here.
+        for var in [v for v in result.variables if v != query_var]:
+            result = result.sum_out(var)
+
+        table = result.table.reshape(-1)
         total = table.sum()
         if total <= 0:
             return {v: 1.0 / len(domain) for v in domain}
