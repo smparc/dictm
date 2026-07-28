@@ -1,0 +1,27 @@
+# Full development environment: runtime + tests + lint + web demo + notebook.
+#
+#     python -m venv .venv
+#     source .venv/bin/activate        # Windows: .venv\Scripts\activate
+#     pip install -r requirements-dev.txt
+#
+# Equivalent to: pip install -e ".[dev,serve,notebook]"
+
+-r requirements.txt
+
+# Tests and lint (what CI runs)
+pytest>=7.0
+pytest-cov>=4.0
+ruff>=0.4
+
+# Web demo — app/server.py
+fastapi>=0.110
+uvicorn>=0.29
+
+# Exercising the FastAPI routes through starlette's TestClient. The tests in
+# tests/test_server.py deliberately call the pure functions instead, so this is
+# only needed if you add HTTP-level tests.
+httpx2>=0.1
+
+# Notebook — notebooks/exploration.ipynb
+jupyter>=1.0
+nbconvert>=7.0

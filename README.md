@@ -19,6 +19,19 @@ That second result is the honest headline. Most of what looks like predictive po
 
 ---
 
+## What's here
+
+- **Four inference engines** behind one interface — exact variable elimination plus rejection sampling, likelihood weighting, and Gibbs (MCMC). The exact engine doubles as ground truth: the samplers are *validated* against it, not merely compared to each other.
+- **Two evidence policies over one graph** — `explanatory` (everything observable) and `ex_ante` (pre-decision only). Switching between them changes nothing but which variables are supplied as evidence.
+- **Hierarchical backoff CPTs** — Jelinek–Mercer interpolation toward lower-order estimates, because 57% of the parent configurations this network needs were never observed in training.
+- **Four reference models** — marginal, majority-class, logistic regression, gradient boosting — all implementing the same `query` interface, so they drop into the same evaluation path as the network.
+- **Proper scoring rules with confidence intervals** — log-loss, Brier, macro-AUC, ECE and top-k, each with a bootstrap 95% CI, computed from a single cached inference pass.
+- **Score-based structure learning** — BIC hill-climbing with add/remove/reverse moves, compared against the hand-crafted DAG on held-out log-likelihood.
+- **Corrected association measures** — normalised mutual information and a G-test with proper degrees of freedom, which raw MI's cardinality bias otherwise distorts.
+- **A web demo, a runnable notebook, and CI** on Python 3.10–3.13.
+
+---
+
 ## Results
 
 Chronological split — trained on the 7,312 earliest cases, tested on the 1,829 most recent. Brackets are bootstrap 95% confidence intervals.
@@ -172,25 +185,33 @@ Base rates on the full dataset: Affirmed 30.1%, Reversed and remanded 27.5%, Rev
 
 ## Installation
 
+Requires **Python 3.10+** (the codebase uses PEP 604 unions in annotations).
+
 ```bash
 git clone <repo> && cd dictm
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 
-python scripts/fetch_data.py     # downloads SCDB into data/
+pip install -r requirements-dev.txt  # everything: runtime + tests + demo + notebook
+# or, minimally:
+pip install -e .                     # runtime only
+pip install -e ".[dev]"              # + pytest, pytest-cov, ruff
+pip install -e ".[serve]"            # + fastapi, uvicorn
+
+python scripts/fetch_data.py         # downloads SCDB into data/
 ```
 
-The dataset is not vendored — it is redistributed by Washington University Law under their own terms.
+The dataset is not vendored — it is redistributed by Washington University Law under their own terms. `scripts/fetch_data.py` pulls the 2024_01 case-centered release by default; pass `--release 2023_01` for an earlier one. The CLI then picks up the newest matching CSV in `data/` automatically.
 
 ---
 
 ## Usage
 
 ```bash
-# Train and compare against every baseline, on both tracks
+# Train, then compare against every baseline on both evidence tracks
 python main.py --mode train_eval
 
-# Only the honest pre-decision track, on the binary task
+# Only the honest pre-decision track, on the binary affirm/reverse task
 python main.py --mode train_eval --track ex_ante --task binary
 
 # Hand-crafted vs learned network structure
@@ -199,19 +220,46 @@ python main.py --mode structure
 # Sampler convergence to the exact posterior
 python main.py --mode convergence
 
-# Interactive single-case prediction
+# Interactive single-case prediction (uses the saved model)
 python main.py --mode predict
 
-# k-fold cross-validation, pairwise association analysis
+# Evaluate a saved model; k-fold CV; pairwise association analysis
+python main.py --mode eval
 python main.py --mode cross_validate
 python main.py --mode dependency
 
-# Plots into figures/
+# Write plots to figures/
 python main.py --mode train_eval --visualize
-
-pytest                      # 201 tests
-ruff check src app tests    # lint
 ```
+
+### Options
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--mode` | `train_eval` | `train_eval`, `predict`, `eval`, `cross_validate`, `dependency`, `structure`, `convergence` |
+| `--track` | `both` | `explanatory`, `ex_ante`, or `both` — which evidence policy to evaluate |
+| `--task` | `multiclass` | `multiclass` (11 dispositions) or `binary` (affirm vs reverse/vacate) |
+| `--split` | `chronological` | `chronological` or `random` |
+| `--test-frac` | `0.2` | Fraction held out for testing |
+| `--alpha` | `1.0` | Laplace smoothing strength |
+| `--no-backoff` | off | Disable hierarchical backoff (reverts to per-configuration Laplace) |
+| `--n-boot` | `500` | Bootstrap resamples for confidence intervals |
+| `--n-folds` | `5` | Folds for `cross_validate` |
+| `--max-parents` | `4` | In-degree cap for structure search |
+| `--method-compare-n` | `200` | Test cases used when timing the sampling engines |
+| `--visualize` | off | Write figures to `figures/` |
+| `--verbose` | off | Debug logging |
+| `--data_path`, `--model_path` | auto | Override dataset / saved-model locations |
+
+### Development
+
+```bash
+pytest                                       # 201 tests
+pytest --cov=src --cov=app                   # 90% coverage
+ruff check src app tests main.py scripts     # lint
+```
+
+CI runs lint, tests with a 75% coverage gate on Python 3.10–3.13, and a packaging check. The suite runs entirely on synthetic fixtures, so it needs no SCDB download.
 
 ### Web demo
 
@@ -221,7 +269,7 @@ python main.py --mode train_eval    # produces data/cpts.json
 uvicorn app.server:app              # or: dictm-serve
 ```
 
-A single self-contained page at `/`, plus `GET /api/schema` and `POST /api/predict`. Selecting the ex-ante track causes post-decision variables to be *dropped* from the request rather than quietly used — the API reports which fields it ignored.
+A single self-contained page at `/` (no build step, no CDN), plus `GET /api/schema` and `POST /api/predict`. Inference is exact, so identical requests return identical answers. Selecting the ex-ante track causes post-decision variables to be *dropped* rather than quietly used — the response lists exactly which fields it ignored.
 
 ---
 
@@ -229,22 +277,34 @@ A single self-contained page at `/`, plus `GET /api/schema` and `POST /api/predi
 
 ```
 dictm/
-├── data/                        SCDB CSV (downloaded) + saved CPTs
+├── main.py                      CLI — 7 modes
+├── pyproject.toml               Build config, extras, pytest + ruff settings
+├── requirements.txt             Runtime deps (mirrors pyproject)
+├── requirements-dev.txt         Full toolchain: tests, lint, demo, notebook
 ├── src/
-│   ├── network_structure.py     Graph, evidence policies, binary task
+│   ├── network_structure.py     Graph, evidence policies, binary task mapping
 │   ├── preprocessing.py         Validation, derived columns, missing-data analysis
 │   ├── cpt_builder.py           Vectorised CPT construction + hierarchical backoff
-│   ├── inference.py             Rejection, likelihood weighting, Gibbs
+│   ├── inference.py             Rejection sampling, likelihood weighting, Gibbs
 │   ├── exact.py                 Variable elimination — the ground truth
 │   ├── baselines.py             Marginal, majority, logistic regression, gradient boosting
-│   ├── evaluate.py              Metrics, bootstrap CIs, cross-validation
+│   ├── evaluate.py              Metrics, bootstrap CIs, cross-validation, convergence
 │   ├── structure_learning.py    BIC hill-climbing, normalised MI, G-test
 │   └── visualize.py             Figures
 ├── app/server.py                FastAPI + self-contained HTML page
-├── scripts/fetch_data.py        Dataset download
+├── scripts/fetch_data.py        SCDB download
 ├── tests/                       201 tests, 90% coverage
-├── notebooks/exploration.ipynb
-└── main.py                      CLI
+│   ├── conftest.py              Synthetic SCDB-shaped fixtures with real signal
+│   ├── test_exact.py            Exact inference + sampler convergence against it
+│   ├── test_metrics.py          Scoring rules checked against hand-computed values
+│   ├── test_baselines.py        Reference models
+│   ├── test_structure_search.py Hill-climbing, NMI, G-test
+│   └── ...                      CPTs, inference, preprocessing, server, plots, CLI
+├── notebooks/exploration.ipynb  Runnable walkthrough of the whole pipeline
+├── data/                        SCDB CSV (downloaded) + saved CPTs — both gitignored
+├── figures/                     Generated plots (gitignored)
+├── Paper.pdf                    Original write-up
+└── .github/workflows/ci.yml     Lint + tests (3.10–3.13) + packaging check
 ```
 
 ---
