@@ -24,8 +24,9 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 
 
-from src.network_structure import NODES, TOPOLOGICAL_ORDER, DISPOSITION_LABELS
-from src.evaluate import build_evidence
+from src.network_structure import (
+    NODES, TOPOLOGICAL_ORDER, DISPOSITION_LABELS, BINARY_LABELS,
+)
 
 
 log = logging.getLogger(__name__)
@@ -41,7 +42,8 @@ plt.rcParams.update({
 })
 
 
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "figures")
+# figures/ lives at the repository root, not inside the package.
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "figures")
 
 
 
@@ -118,10 +120,14 @@ def plot_network_dag(save: bool = True):
         x, y = layer_positions[node_name]
         color = layer_colors[node_name]
         label = node_name.replace("_", "\n")
-        ax.add_patch(plt.Rectangle((x - 0.4, y - 0.12), 0.8, 0.24,
-                                   facecolor=color, edgecolor="#333",
-                                   linewidth=1.5, zorder=3, alpha=0.9,
-                                   boxstyle="round,pad=0.1"))
+        # FancyBboxPatch, not Rectangle: only the former accepts `boxstyle`,
+        # and passing it to a plain Rectangle raises.
+        ax.add_patch(mpatches.FancyBboxPatch(
+            (x - 0.4, y - 0.12), 0.8, 0.24,
+            boxstyle="round,pad=0.02",
+            facecolor=color, edgecolor="#333",
+            linewidth=1.5, zorder=3, alpha=0.9,
+        ))
         ax.text(x, y, label, ha="center", va="center", fontsize=8,
                 fontweight="bold", zorder=4)
 
@@ -158,64 +164,56 @@ def plot_network_dag(save: bool = True):
 
 
 def plot_confusion_matrix(
-    df_test: pd.DataFrame,
-    sampler,
-    n_samples: int = 1000,
-    query_var: str = "final_disposition",
+    result: dict,
+    filename: str = "confusion_matrix.png",
     save: bool = True,
 ):
-    """Plot a heatmap confusion matrix for Top-1 predictions."""
+    """
+    Heatmap confusion matrix for top-1 predictions.
+
+    Takes an `evaluate_model` result rather than a sampler, so it reuses the
+    posterior matrix already computed instead of running inference again.
+    """
     _ensure_output_dir()
-    from src.network_structure import COLUMN_MAP
 
+    y_true = result["_y_true"]
+    P = result["_P"]
+    classes = result["classes"]
+    labels_map = BINARY_LABELS if result.get("binary") else DISPOSITION_LABELS
 
-    target_col = COLUMN_MAP.get(query_var, query_var)
-    true_labels = []
-    pred_labels = []
+    class_array = np.array(classes, dtype=object)
+    predicted = class_array[np.argmax(P, axis=1)]
 
+    index = {c: i for i, c in enumerate(classes)}
+    matrix = np.zeros((len(classes), len(classes)), dtype=int)
+    for true_val, pred_val in zip(y_true, predicted):
+        if true_val in index and pred_val in index:
+            matrix[index[true_val], index[pred_val]] += 1
 
-    for _, row in df_test.iterrows():
-        if target_col not in row.index or pd.isna(row[target_col]):
-            continue
-        true_val = row[target_col]
-        evidence = build_evidence(row, exclude_var=query_var)
-        preds = sampler.top_k_predictions(query_var, evidence, k=1, n_samples=n_samples)
-        true_labels.append(int(true_val))
-        pred_labels.append(int(preds[0][0]) if preds else -1)
+    def _label(c):
+        try:
+            return labels_map.get(int(c), str(c))[:20]
+        except (TypeError, ValueError):
+            return str(c)[:20]
 
-
-    all_classes = sorted(set(true_labels) | set(pred_labels))
-    n = len(all_classes)
-    class_to_idx = {c: i for i, c in enumerate(all_classes)}
-
-
-    matrix = np.zeros((n, n), dtype=int)
-    for t, p in zip(true_labels, pred_labels):
-        if t in class_to_idx and p in class_to_idx:
-            matrix[class_to_idx[t], class_to_idx[p]] += 1
-
-
-    labels = [DISPOSITION_LABELS.get(c, str(c))[:20] for c in all_classes]
-
+    labels = [_label(c) for c in classes]
 
     fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(matrix, annot=True, fmt="d", cmap="Blues",
                 xticklabels=labels, yticklabels=labels, ax=ax)
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
-    ax.set_title("Confusion Matrix — Top-1 Predictions")
+    ax.set_title(f"Confusion Matrix — {result.get('name', 'model')} (Top-1)")
     plt.xticks(rotation=45, ha="right")
     plt.yticks(rotation=0)
     plt.tight_layout()
 
-
     if save:
-        path = os.path.join(OUTPUT_DIR, "confusion_matrix.png")
+        path = os.path.join(OUTPUT_DIR, filename)
         fig.savefig(path, bbox_inches="tight")
         print(f"  Saved: {path}")
     plt.close(fig)
     return fig
-
 
 
 # ---------------------------------------------------------------------------
