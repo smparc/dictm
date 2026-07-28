@@ -20,11 +20,20 @@ class TestCPTBuilder:
     """Tests for CPT learning from data."""
 
 
-    def test_fit_creates_cpts_for_all_nodes(self, sample_df):
+    def test_fit_creates_cpts_for_all_nodes(self, prepared_df):
         builder = CPTBuilder(alpha=1.0)
-        builder.fit(sample_df)
+        builder.fit(prepared_df)
         for node in TOPOLOGICAL_ORDER:
             assert node in builder.cpts, f"Missing CPT for {node}"
+
+    def test_split_vote_node_requires_derived_column(self, sample_df):
+        """
+        Without `add_derived_columns` there is no `voteSplit`, so the split_vote
+        node is simply absent — the builder skips unmapped columns rather than
+        inventing one.
+        """
+        builder = CPTBuilder(alpha=1.0).fit(sample_df)
+        assert "split_vote" not in builder.cpts
 
 
     def test_root_probabilities_sum_to_one(self, fitted_builder):
@@ -126,9 +135,38 @@ class TestCPTSerialization:
             os.unlink(path)
 
 
-    def test_load_uses_literal_eval_not_eval(self):
-        """Ensure we use ast.literal_eval, not eval (security)."""
-        import ast
+    def test_load_never_interprets_file_contents_as_code(self):
+        """
+        Loading a model must not evaluate anything from the file.
+
+        CPT keys are tuples, which JSON cannot express. The original approach
+        stringified them and parsed the result back with `ast.literal_eval`;
+        this now stores each key as an explicit list instead, so no part of a
+        model file is ever passed to an evaluator. That is both safer and
+        type-faithful — `literal_eval` could not distinguish the string "2.0"
+        from the float 2.0 once numpy types had been stringified.
+        """
+        import re
         import src.cpt_builder as mod
-        # The module should import ast
-        assert hasattr(mod, "ast") or "ast" in dir(mod) or "literal_eval" in open(mod.__file__).read()
+
+        source = open(mod.__file__, encoding="utf-8").read()
+        assert not re.search(r"\beval\s*\(", source), "cpt_builder must not call eval()"
+        assert "literal_eval" not in source
+
+    def test_roundtrip_preserves_value_types(self, fitted_builder):
+        """String and numeric node values must survive save/load unchanged."""
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            path = f.name
+        try:
+            fitted_builder.save(path)
+            loaded = CPTBuilder.load(path)
+
+            assert loaded.get_values("chief_justice") == fitted_builder.get_values("chief_justice")
+            assert "Roberts" in loaded.get_values("chief_justice")
+            assert loaded.get_parents("final_disposition") == \
+                   fitted_builder.get_parents("final_disposition")
+        finally:
+            os.unlink(path)
