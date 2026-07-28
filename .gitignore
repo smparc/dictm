@@ -13,7 +13,17 @@ data/cpts.json
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
-notebook/.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
 
 # Generated visualizations
 figures/
+
+# Test and lint caches
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
