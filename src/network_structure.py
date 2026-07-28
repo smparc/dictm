@@ -134,7 +134,14 @@ TOPOLOGICAL_ORDER = [
 ]
 
 
-# Column names in the SCDB dataset that map to our node names
+# Column names in the SCDB dataset that map to our node names.
+#
+# Note on `split_vote`: SCDB's own `splitVote` column is an internal
+# record-keeping flag (whether a case was split across multiple vote records),
+# NOT an indicator that the justices disagreed. It is constant (== 1) across
+# every row of the 2024_01 release, so it carries zero information. We instead
+# use `voteSplit`, a derived column built by
+# `preprocessing.add_derived_columns` as (minVotes > 0).
 COLUMN_MAP = {
     "chief_justice":           "chief",
     "issue_area":              "issueArea",
@@ -143,13 +150,57 @@ COLUMN_MAP = {
     "lower_court_disposition": "lcDisposition",
     "decision_type":           "decisionType",
     "precedent_alteration":    "precedentAlteration",
-    "split_vote":              "splitVote",
+    "split_vote":              "voteSplit",
     "unconstitutional":        "declarationUncon",
     "final_disposition":       "caseDisposition",
 }
 
 
-# Human-readable labels for final_disposition values
+# ---------------------------------------------------------------------------
+# Evidence policies ("tracks")
+# ---------------------------------------------------------------------------
+#
+# The same DAG supports two very different experiments, distinguished only by
+# which variables are supplied as evidence at prediction time.
+#
+#   explanatory — every observable variable, including several recorded FROM the
+#                 decision (decision_type, split_vote, unconstitutional,
+#                 precedent_alteration, case_supplement). This is a descriptive
+#                 model of how case attributes co-occur with outcomes. It is NOT
+#                 a forecast: the evidence is not available before the ruling.
+#
+#   ex_ante     — only variables knowable before the Court deliberates. The four
+#                 intermediate nodes become unobserved, so the posterior must
+#                 marginalise over them and the inference engines do real work.
+#
+# `final_disposition` is the query variable and never appears in either set.
+
+FEATURE_SETS = {
+    "explanatory": [
+        "chief_justice",
+        "issue_area",
+        "law_type",
+        "case_supplement",
+        "lower_court_disposition",
+        "decision_type",
+        "precedent_alteration",
+        "split_vote",
+        "unconstitutional",
+    ],
+    "ex_ante": [
+        "chief_justice",
+        "issue_area",
+        "law_type",
+        "lower_court_disposition",
+    ],
+}
+
+DEFAULT_TRACK = "explanatory"
+
+
+# Human-readable labels for final_disposition values.
+# Codes follow the SCDB codebook; code 11 is present in the data (1 case) and
+# was previously missing from this table.
 DISPOSITION_LABELS = {
     1: "Stay, petition, or motion granted",
     2: "Affirmed (includes modified)",
@@ -161,4 +212,40 @@ DISPOSITION_LABELS = {
     8: "Vacated",
     9: "Petition denied or appeal dismissed",
     10: "Certification to or from a lower court",
+    11: "No disposition",
 }
+
+
+# ---------------------------------------------------------------------------
+# Binary affirm / reverse task
+# ---------------------------------------------------------------------------
+#
+# The standard formulation in the quantitative-legal-prediction literature
+# (e.g. Katz, Bommarito & Blackman 2017) collapses dispositions into "the lower
+# court was affirmed" vs "the lower court was reversed, vacated, or remanded".
+# Dispositions that are neither (procedural outcomes) are dropped.
+
+BINARY_AFFIRM = {2}
+BINARY_REVERSE = {3, 4, 5, 8}
+
+BINARY_LABELS = {
+    0: "Affirmed",
+    1: "Reversed / vacated",
+}
+
+
+def to_binary_disposition(value) -> int | None:
+    """Map a raw SCDB disposition code onto the binary affirm/reverse task.
+
+    Returns 0 (affirmed), 1 (reversed/vacated), or None for dispositions that
+    belong to neither class and should be excluded from the binary task.
+    """
+    try:
+        code = int(value)
+    except (TypeError, ValueError):
+        return None
+    if code in BINARY_AFFIRM:
+        return 0
+    if code in BINARY_REVERSE:
+        return 1
+    return None

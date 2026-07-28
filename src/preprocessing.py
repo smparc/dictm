@@ -28,6 +28,46 @@ log = logging.getLogger(__name__)
 
 
 
+def add_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build the derived columns the network depends on.
+
+    Currently one: ``voteSplit``.
+
+    SCDB ships a column literally named ``splitVote``, and it is tempting to
+    read it as "the justices were divided". It is not — it is an internal flag
+    marking cases whose votes were split across multiple records, and it is
+    constant (== 1) for every row of the 2024_01 release. A constant carries no
+    information, so a node fed by it is dead weight in the network.
+
+    The informative indicator is whether anyone dissented, which SCDB records
+    directly as ``minVotes``. We derive ``voteSplit = (minVotes > 0)``.
+
+    Returns
+    -------
+    DataFrame with the derived columns added (a copy; the input is untouched).
+    """
+    df = df.copy()
+
+    if "voteSplit" in df.columns:
+        return df
+
+    if "minVotes" in df.columns:
+        df["voteSplit"] = (df["minVotes"].fillna(0) > 0).astype(int)
+        log.debug("Derived 'voteSplit' from minVotes")
+    elif "splitVote" in df.columns:
+        # No vote counts available — fall back to the raw column so the node is
+        # still populated, but warn loudly if it turns out to be constant.
+        df["voteSplit"] = df["splitVote"]
+        if df["voteSplit"].nunique(dropna=True) <= 1:
+            log.warning(
+                "'voteSplit' fell back to SCDB 'splitVote', which is constant; "
+                "the split_vote node will carry no information"
+            )
+
+    return df
+
+
 def validate_columns(df: pd.DataFrame) -> list[str]:
     """
     Check that all required SCDB columns are present.
@@ -109,10 +149,11 @@ def preprocess(
 
 
     Steps:
-    1. Validate columns
-    2. Drop rows missing the target variable (final_disposition)
-    3. Drop rows with too many missing features
-    4. Report data quality summary
+    1. Build derived columns (voteSplit)
+    2. Validate columns
+    3. Drop rows missing the target variable (final_disposition)
+    4. Drop rows with too many missing features
+    5. Report data quality summary
 
 
     Parameters
@@ -130,19 +171,23 @@ def preprocess(
     n_original = len(df)
 
 
-    # 1. Validate columns
+    # 1. Derived columns must exist before validation looks for them
+    df = add_derived_columns(df)
+
+
+    # 2. Validate columns
     missing_cols = validate_columns(df)
     if missing_cols and verbose:
         print(f"  ⚠ Missing columns: {missing_cols}")
 
 
-    # 2. Drop rows without target
+    # 3. Drop rows without target
     target_col = COLUMN_MAP["final_disposition"]
     if drop_missing_target and target_col in df.columns:
         df = df.dropna(subset=[target_col])
 
 
-    # 3. Drop rows with too many missing features
+    # 4. Drop rows with too many missing features
     feature_cols = [COLUMN_MAP[n] for n in TOPOLOGICAL_ORDER
                     if n != "final_disposition" and COLUMN_MAP.get(n) in df.columns]
     if feature_cols:
