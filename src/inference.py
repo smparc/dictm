@@ -39,6 +39,29 @@ from src.cpt_builder import CPTBuilder
 log = logging.getLogger(__name__)
 
 
+def _parent_values(cpt: CPTBuilder, node_name: str, assignment: dict) -> tuple:
+    """
+    Build the parent-value tuple in the exact order the CPT was keyed on.
+
+    The ordering comes from the builder rather than from `NODES`, because the
+    builder drops parents whose column was absent from the training data — and a
+    tuple built in a different order (or with a hole in the middle) silently
+    addresses the wrong CPT cell.
+
+    If a parent is unassigned, the tuple is truncated there rather than having
+    that parent skipped. A truncated tuple is still a valid *prefix*, which is
+    what `CPTBuilder.query_child` backs off along; a tuple with a hole in it is
+    not, and would resolve to a different configuration entirely.
+    """
+    parents = cpt.get_parents(node_name) or NODES[node_name].parents
+    values = []
+    for parent in parents:
+        if parent not in assignment:
+            break
+        values.append(assignment[parent])
+    return tuple(values)
+
+
 
 class RejectionSampler:
     """Perform probabilistic inference via rejection sampling."""
@@ -78,8 +101,7 @@ class RejectionSampler:
         if node.is_root():
             probs = np.array([self.cpt.query_root(node_name, v) for v in values])
         else:
-            valid_parents = [p for p in node.parents if p in assignment]
-            parent_vals = tuple(assignment[p] for p in valid_parents)
+            parent_vals = _parent_values(self.cpt, node_name, assignment)
             probs = np.array([
                 self.cpt.query_child(node_name, parent_vals, v) for v in values
             ])
@@ -225,8 +247,7 @@ class LikelihoodWeightingSampler:
         if node.is_root():
             probs = np.array([self.cpt.query_root(node_name, v) for v in values])
         else:
-            valid_parents = [p for p in node.parents if p in assignment]
-            parent_vals = tuple(assignment[p] for p in valid_parents)
+            parent_vals = _parent_values(self.cpt, node_name, assignment)
             probs = np.array([
                 self.cpt.query_child(node_name, parent_vals, v) for v in values
             ])
@@ -272,8 +293,7 @@ class LikelihoodWeightingSampler:
                 if node.is_root():
                     w = self.cpt.query_root(node_name, evidence[node_name])
                 else:
-                    valid_parents = [p for p in node.parents if p in assignment]
-                    parent_vals = tuple(assignment[p] for p in valid_parents)
+                    parent_vals = _parent_values(self.cpt, node_name, assignment)
                     w = self.cpt.query_child(node_name, parent_vals, evidence[node_name])
 
 
@@ -421,8 +441,7 @@ class GibbsSampler:
             if node.is_root():
                 p = self.cpt.query_root(node_name, val)
             else:
-                valid_parents = [p for p in node.parents if p in state]
-                parent_vals = tuple(state[p] for p in valid_parents)
+                parent_vals = _parent_values(self.cpt, node_name, state)
                 p = self.cpt.query_child(node_name, parent_vals, val)
 
 
