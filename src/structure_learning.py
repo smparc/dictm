@@ -135,6 +135,78 @@ def compute_mutual_information(
 
 
 
+def compute_normalized_mutual_information(
+    df: pd.DataFrame,
+    var_a: str,
+    var_b: str,
+) -> float:
+    """
+    Normalised mutual information, I(A;B) / sqrt(H(A) * H(B)).
+
+    Raw mutual information grows with the number of categories a variable has,
+    so comparing I(A;B) across pairs of different cardinality is misleading —
+    `issueArea` (14 values) will outrank `precedentAlteration` (2 values) partly
+    because it is finer-grained, not because it is more informative. Dividing by
+    the geometric mean of the marginal entropies puts every pair on a [0, 1]
+    scale where 0 is independence and 1 is a deterministic relationship.
+
+    Returns
+    -------
+    float in [0, 1]
+    """
+    sub = df[[var_a, var_b]].dropna()
+    if len(sub) == 0:
+        return 0.0
+
+    mi = compute_mutual_information(df, var_a, var_b)
+
+    def entropy(series: pd.Series) -> float:
+        p = series.value_counts(normalize=True).to_numpy()
+        p = p[p > 0]
+        return float(-np.sum(p * np.log(p)))
+
+    h_a = entropy(sub[var_a])
+    h_b = entropy(sub[var_b])
+    if h_a <= 0 or h_b <= 0:
+        return 0.0
+    return float(min(1.0, mi / np.sqrt(h_a * h_b)))
+
+
+def g_test(df: pd.DataFrame, var_a: str, var_b: str) -> dict:
+    """
+    Likelihood-ratio (G) test of independence between two categorical variables.
+
+    G = 2 * N * I(A;B) in nats, asymptotically chi-squared with
+    (|A| - 1)(|B| - 1) degrees of freedom. Unlike a bare dependency score, this
+    says whether an observed association is larger than sampling noise would
+    produce — the degrees-of-freedom correction is what stops high-cardinality
+    variables from looking significant purely by having more cells.
+
+    Returns
+    -------
+    dict with keys "g", "dof", "p_value", "n"
+    """
+    sub = df[[var_a, var_b]].dropna()
+    n = len(sub)
+    if n == 0:
+        return {"g": 0.0, "dof": 0, "p_value": 1.0, "n": 0}
+
+    mi = compute_mutual_information(df, var_a, var_b)
+    g = 2.0 * n * mi
+    dof = (sub[var_a].nunique() - 1) * (sub[var_b].nunique() - 1)
+
+    p_value = 1.0
+    if dof > 0:
+        try:
+            from scipy.stats import chi2
+
+            p_value = float(chi2.sf(g, dof))
+        except ImportError:  # scipy absent — report the statistic without a p-value
+            p_value = float("nan")
+
+    return {"g": round(g, 4), "dof": int(dof), "p_value": p_value, "n": int(n)}
+
+
 def dependency_matrix(
     df: pd.DataFrame,
     variables: list[str] | None = None,
