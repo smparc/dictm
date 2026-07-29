@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  28 JUL 2026 20:02
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  28 JUL 2026 20:09
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -511,6 +511,10 @@ File: tikzlibrarybackgrounds.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 \pgf@layerbox@background=\box66
 \pgf@layerboxsaved@background=\box67
 )
+(C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/generic/pgf/frontendlayer/tik
+z/libraries\tikzlibrarycalc.code.tex
+File: tikzlibrarycalc.code.tex 2025-08-29 v3.1.11a (3.1.11a)
+)
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/algorithms\algorithm.st
 y
 Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating enviro
@@ -871,17 +875,16 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 {C:/Users/smpar/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}]
 LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 199.
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 209.
 
-Overfull \hbox (6.51505pt too wide) in paragraph at lines 205--209
+Underfull \hbox (badness 1472) in paragraph at lines 215--219
 []\OT1/cmr/m/n/10.95 Only the four vari-ables know-able be-fore the Court de-li
-b-er-ates: \OT1/cmtt/m/n/10.95 chief[]justice\OT1/cmr/m/n/10.95 , \OT1/cmtt/m/n
-/10.95 issue[]area\OT1/cmr/m/n/10.95 ,
+b-er-ates: \OT1/cmtt/m/n/10.95 chief[]justice\OT1/cmr/m/n/10.95 ,
  []
 
 [2] [3]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 276.
+put line 287.
  [4] [5] [6] [7] [8] (paper.aux)
  ***********
 LaTeX2e <2025-11-01>
@@ -891,13 +894,13 @@ Package rerunfilecheck Info: File `paper.out' has not changed.
 (rerunfilecheck)             Checksum: 16D656FE5A2432D8B655C03E4A8BB2CD;2585.
  ) 
 Here is how much of TeX's memory you used:
- 27436 strings out of 467871
- 564856 string characters out of 5418376
- 922180 words of memory out of 5000000
- 55868 multiletter control sequences out of 15000+600000
+ 27511 strings out of 467871
+ 566517 string characters out of 5418376
+ 922843 words of memory out of 5000000
+ 55940 multiletter control sequences out of 15000+600000
  645679 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 84i,11n,104p,444b,1163s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,11n,104p,449b,1163s stack positions out of 10000i,1000n,20000p,200000b,200000s
  <C:\Users\smpar\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\tcrm
 1095.pk><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfon
 ts/cm/cmbx10.pfb><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/publ
@@ -922,7 +925,7 @@ ers/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmtt10.p
 fb><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm
 /cmtt8.pfb><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/ams
 fonts/cm/cmtt9.pfb>
-Output written on paper.pdf (8 pages, 310340 bytes).
+Output written on paper.pdf (8 pages, 311314 bytes).
 PDF statistics:
  271 PDF objects out of 1000 (max. 8388607)
  49 named destinations out of 1000 (max. 500000)

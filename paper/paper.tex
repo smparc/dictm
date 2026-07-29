@@ -5,7 +5,7 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{siunitx}
@@ -137,29 +137,31 @@ case properties and the outcome; Layer~4 is the prediction target.
 \centering
 \begin{tikzpicture}[
   >={Stealth[length=2mm]},
-  node distance=8mm,
   var/.style={draw, rounded corners=2pt, font=\scriptsize\ttfamily,
-              inner sep=3pt, minimum height=6mm, align=center},
+              inner xsep=5pt, inner ysep=4pt, align=center},
   root/.style={var, fill=green!8},
   midlayer/.style={var, fill=yellow!12},
   outcome/.style={var, fill=red!10},
   courtinfo/.style={var, fill=blue!10},
+  lbl/.style={font=\scriptsize\itshape, gray!70, fill=white, inner sep=1.5pt},
   e/.style={->, gray!70, shorten >=1pt, shorten <=1pt}
 ]
 
-\node[courtinfo] (chief) at (0,4.6) {chief\_justice};
+% Layer 2 and 3 are chained with `right=of`, so TikZ derives the horizontal
+% spacing from the actual typeset width of each label rather than an estimate.
+\node[root] (issue) at (0,0) {issue\_area};
+\node[root, right=7mm of issue] (law)  {law\_type};
+\node[root, right=7mm of law]   (supp) {case\_supplement};
+\node[root, right=7mm of supp]  (lcd)  {lower\_court\_disposition};
 
-\node[root] (issue)  at (-5.1,2.9) {issue\_area};
-\node[root] (law)    at (-1.9,2.9) {law\_type};
-\node[root] (supp)   at ( 1.3,2.9) {case\_supplement};
-\node[root] (lcd)    at ( 4.9,2.9) {lower\_court\_disposition};
+\node[midlayer] (dtype) at (0,-2) {decision\_type};
+\node[midlayer, right=7mm of dtype] (prec)  {precedent\_alteration};
+\node[midlayer, right=7mm of prec]  (split) {split\_vote};
+\node[midlayer, right=7mm of split] (uncon) {unconstitutional};
 
-\node[midlayer] (dtype) at (-5.1,1.2) {decision\_type};
-\node[midlayer] (prec)  at (-1.9,1.2) {precedent\_alteration};
-\node[midlayer] (split) at ( 1.6,1.2) {split\_vote};
-\node[midlayer] (uncon) at ( 4.6,1.2) {unconstitutional};
-
-\node[outcome] (disp) at (0,-0.6) {final\_disposition};
+% Chief justice and the outcome are centred on the widest row.
+\node[courtinfo] at ($(dtype.west)!0.5!(uncon.east)+(0,4)$) (chief) {chief\_justice};
+\node[outcome]   at ($(dtype.west)!0.5!(uncon.east)+(0,-2)$) (disp)  {final\_disposition};
 
 \draw[e] (issue) -- (dtype);
 \draw[e] (law)   -- (dtype);
@@ -174,12 +176,18 @@ case properties and the outcome; Layer~4 is the prediction target.
 \draw[e] (prec)  -- (disp);
 \draw[e] (split) -- (disp);
 \draw[e] (uncon) -- (disp);
-\draw[e] (chief) to[out=-20,in=35] (disp);
 
-\node[font=\scriptsize\itshape, gray, anchor=west] at (-7.4,4.6) {Court info};
-\node[font=\scriptsize\itshape, gray, anchor=west] at (-7.4,2.9) {Case properties};
-\node[font=\scriptsize\itshape, gray, anchor=west] at (-7.4,1.2) {Intermediate};
-\node[font=\scriptsize\itshape, gray, anchor=west] at (-7.4,-0.6) {Outcome};
+% chief_justice -> final_disposition is routed down the right-hand margin so it
+% passes outside every other node instead of cutting through the middle layers.
+\coordinate (rx) at ([xshift=7mm]uncon.east);
+\draw[e, rounded corners=4pt]
+  (chief.east) -- (chief.east -| rx) -- (disp.east -| rx) -- (disp.east);
+
+% Layer captions sit on their own line above each row, clear of all nodes.
+\node[lbl, anchor=south west] at ([yshift=1.5mm]chief.north  -| dtype.west) {Court information};
+\node[lbl, anchor=south west] at ([yshift=1.5mm]issue.north  west) {Case properties (roots)};
+\node[lbl, anchor=south west] at ([yshift=1.5mm]dtype.north  west) {Intermediate nodes};
+\node[lbl, anchor=south west] at ([yshift=1.5mm]disp.north   -| dtype.west) {Final outcome};
 
 \end{tikzpicture}
 \caption{The hand-crafted network: 10 variables, 13 edges. Shading marks the
@@ -196,6 +204,7 @@ The same DAG supports two different experiments, distinguished only by which
 variables are supplied as evidence at prediction time. The graph and the CPTs
 are identical in both.
 
+\begingroup\sloppy
 \begin{description}
   \item[\code{explanatory}] All nine observable variables. Several of these ---
     \code{decision\_type}, \code{split\_vote}, \code{unconstitutional},
@@ -205,9 +214,10 @@ are identical in both.
     forecast.
   \item[\code{ex\_ante}] Only the four variables knowable before the Court
     deliberates: \code{chief\_justice}, \code{issue\_area}, \code{law\_type},
-    \code{lower\_court\_disposition}. The intermediate nodes become unobserved,
-    so the posterior must marginalise over them.
+    and \code{lower\_court\_disposition}. The intermediate nodes become
+    unobserved, so the posterior must marginalise over them.
 \end{description}
+\endgroup
 
 Keeping both tracks in the same codebase is deliberate. The gap between them is
 the honest measure of how much of the explanatory track's performance comes from
