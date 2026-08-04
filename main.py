@@ -238,7 +238,6 @@ def _print_track_verdict(all_results: dict, ks):
     if not all_results:
         return
 
-    k = 3 if 3 in ks else ks[0]
     print("\n── Verdict ──────────────────────────────────────────────")
 
     for track, results in all_results.items():
@@ -246,6 +245,14 @@ def _print_track_verdict(all_results: dict, ks):
         network = next((r for r in results if r["name"].startswith("Bayesian")), None)
         if not marginal or not network:
             continue
+
+        # The binary task has only two classes, so it reports top_1 and nothing
+        # else. Pick a k the results actually carry rather than assuming top_3
+        # exists because it was requested.
+        present = [n for n in ks if f"top_{n}" in network and f"top_{n}" in marginal]
+        if not present:
+            continue
+        k = 3 if 3 in present else present[0]
 
         key = f"top_{k}"
         delta = network[key] - marginal[key]

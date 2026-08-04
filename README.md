@@ -127,12 +127,28 @@ Adding exact inference changed what the other three are *for*. Previously the sa
 ```
 Engine                           100       500      1000      5000     (samples)
 ──────────────────────────────────────────────────────────────────
-Rejection Sampling            0.8192    0.5046    0.3618    0.1326
+Rejection Sampling            0.5486    0.2546    0.1514    0.2276   ← varies per run
 Likelihood Weighting          0.1134    0.0354    0.0164    0.0132
 Gibbs Sampling (MCMC)         0.1045    0.0376    0.0226    0.0136
 ```
 
-Total-variation distance from the exact posterior, decreasing monotonically for all three. Rejection sampling's collapse on the explanatory track (TV 0.55, and 1,400× slower than exact) is the textbook failure mode made measurable: with nine evidence variables, almost every sample is discarded.
+Total-variation distance from the exact posterior. Likelihood weighting and Gibbs
+converge monotonically and reproduce exactly on every run. **Rejection sampling does
+neither**, and the row above is one observed run rather than a fixed result — repeated
+invocations of `--mode convergence` have produced `0.5486 / 0.8192 / 0.8192 / 0.1514`
+and `0.5486 / 0.5486 / 0.9087 / 0.2269` from the same seed.
+
+That instability is itself the finding. `CPTBuilder.get_values` returns a **set**, so
+nodes with string values iterate in an order that Python's hash randomisation varies
+per process. Which index a given RNG draw maps to therefore changes between runs. The
+weighted samplers are unaffected — they aggregate over every value — but rejection
+sampling accepts only a handful of samples out of thousands, so the ordering decides
+the answer. Sorting the value sets would make it deterministic, at the cost of
+remapping every sampler's draws and shifting the numbers in the tables above.
+
+Rejection sampling's collapse on the explanatory track (TV ≈ 0.55, and 1,400× slower
+than exact) is the textbook failure mode made measurable: with nine evidence variables,
+almost every sample is discarded — and what survives is too few to be stable.
 
 Exact inference is also the right default here. When all of a leaf's parents are observed, the posterior is a single CPT row — and the sampling engines were spending 1,000 draws to approximate a dictionary lookup.
 

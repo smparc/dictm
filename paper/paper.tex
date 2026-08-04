@@ -322,23 +322,42 @@ Gibbs sampling (MCMC)        & 87.0\% & 13.38 s & 0.0232 \\
 Rejection sampling's collapse is the textbook failure mode, now measured rather
 than asserted: with nine evidence variables almost every sample is discarded,
 leaving the estimate both wrong (TV $0.55$) and $1400\times$ slower than exact.
-Table~\ref{tab:convergence} confirms all three samplers converge toward the
-exact posterior as the budget grows.
+Table~\ref{tab:convergence} shows the two weighted samplers converging toward the
+exact posterior as the budget grows. Rejection sampling does not converge cleanly,
+and its row is not reproducible between runs.
 
 \begin{table}[t]
 \centering
-\caption{Total-variation distance from the exact posterior versus sample budget.}
+\caption{Total-variation distance from the exact posterior versus sample budget.
+Likelihood weighting and Gibbs reproduce exactly on every run; the rejection
+sampling row is one observed run of many possible ones (see text).}
 \label{tab:convergence}
 \begin{tabular}{lrrrr}
 \toprule
 Engine & 100 & 500 & 1000 & 5000 \\
 \midrule
-Rejection sampling   & 0.8192 & 0.5046 & 0.3618 & 0.1326 \\
+Rejection sampling$^{\dagger}$ & 0.5486 & 0.2546 & 0.1514 & 0.2276 \\
 Likelihood weighting & 0.1134 & 0.0354 & 0.0164 & 0.0132 \\
 Gibbs sampling       & 0.1045 & 0.0376 & 0.0226 & 0.0136 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\paragraph{$^{\dagger}$ On the irreproducibility of the rejection row.}
+Repeated invocations at a fixed seed have produced
+$0.5486 / 0.8192 / 0.8192 / 0.1514$ and $0.5486 / 0.5486 / 0.9087 / 0.2269$
+alongside the row above, and the sequence is not monotone in the sample budget.
+The cause is not sampling noise in the ordinary sense. \code{CPTBuilder.get\_values}
+returns a \code{set}, so nodes taking string values iterate in an order that
+Python's per-process hash randomisation varies from run to run; the index a given
+random draw selects therefore maps to a different value each time. Likelihood
+weighting and Gibbs are insensitive to this because they aggregate over every
+value of a node. Rejection sampling, accepting on the order of one sample in a
+hundred under nine evidence variables, rests on so few accepted draws that the
+ordering determines the estimate. Sorting the value sets would restore
+determinism at the cost of remapping every sampler's draws, and with them the
+figures reported elsewhere in this paper; the instability is recorded here
+rather than papered over.
 
 Exact inference is also the right default for a further reason: when all of a
 leaf's parents are observed, the posterior is a single CPT row. The sampling

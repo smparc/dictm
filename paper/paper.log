@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  28 JUL 2026 20:09
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  3 AUG 2026 20:14
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -885,7 +885,7 @@ b-er-ates: \OT1/cmtt/m/n/10.95 chief[]justice\OT1/cmr/m/n/10.95 ,
 [2] [3]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
 put line 287.
- [4] [5] [6] [7] [8] (paper.aux)
+ [4] [5] [6] [7] [8] [9] (paper.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
@@ -894,9 +894,9 @@ Package rerunfilecheck Info: File `paper.out' has not changed.
 (rerunfilecheck)             Checksum: 16D656FE5A2432D8B655C03E4A8BB2CD;2585.
  ) 
 Here is how much of TeX's memory you used:
- 27511 strings out of 467871
- 566517 string characters out of 5418376
- 922843 words of memory out of 5000000
+ 27513 strings out of 467871
+ 566534 string characters out of 5418376
+ 925988 words of memory out of 5000000
  55940 multiletter control sequences out of 15000+600000
  645679 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -925,9 +925,9 @@ ers/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmtt10.p
 fb><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm
 /cmtt8.pfb><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/ams
 fonts/cm/cmtt9.pfb>
-Output written on paper.pdf (8 pages, 311314 bytes).
+Output written on paper.pdf (9 pages, 314520 bytes).
 PDF statistics:
- 271 PDF objects out of 1000 (max. 8388607)
- 49 named destinations out of 1000 (max. 500000)
+ 276 PDF objects out of 1000 (max. 8388607)
+ 51 named destinations out of 1000 (max. 500000)
  141 words of extra memory for PDF output out of 10000 (max. 10000000)
 
