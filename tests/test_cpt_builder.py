@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.cpt_builder import CPTBuilder
+from src.cpt_builder import CPTBuilder, _sort_key
 from src.network_structure import TOPOLOGICAL_ORDER
 
 
