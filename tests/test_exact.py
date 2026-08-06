@@ -186,6 +186,87 @@ class TestSamplerConvergence:
         )
         assert total_variation_distance(exact, approx) < 0.05
 
+    @pytest.mark.parametrize(
+        "sampler_cls",
+        [RejectionSampler, LikelihoodWeightingSampler, GibbsSampler],
+    )
+    def test_a_seeded_run_reproduces_exactly(self, fitted_builder, sampler_cls):
+        """Same seed, same answer — the property a seed exists to provide.
+
+        This failed for `RejectionSampler` before `get_values` was ordered, but
+        only across *processes*: string hashing is randomised per interpreter, so
+        a within-process repeat could not see it. `PYTHONHASHSEED` is therefore
+        checked separately in `test_value_order_is_stable_across_processes`.
+        """
+        first = sampler_cls(fitted_builder, random_state=99).query(
+            "final_disposition", self.EVIDENCE, n_samples=2000
+        )
+        second = sampler_cls(fitted_builder, random_state=99).query(
+            "final_disposition", self.EVIDENCE, n_samples=2000
+        )
+        assert first == second
+
+
+class TestGibbsMarkovBlanket:
+    """The full conditional must address the CPT cells it claims to."""
+
+    def test_child_parent_key_is_a_prefix_not_a_perforated_tuple(self, fitted_builder):
+        """`_parent_values` must never skip a missing parent mid-tuple.
+
+        The Gibbs sampler used to build its children's parent keys inline,
+        appending only the co-parents present in the current state. An absent
+        co-parent was skipped rather than terminating the tuple, so every later
+        value shifted one slot left — and because `query_child` backs off along
+        *prefixes*, a perforated key does not degrade to a shallower estimate.
+        It addresses a different configuration and returns a confident wrong
+        number, which biases the chain away from the posterior it targets.
+        """
+        from src.inference import _parent_values
+
+        parents = fitted_builder.get_parents("final_disposition")
+        assert len(parents) >= 3, "fixture no longer exercises a multi-parent node"
+
+        # Second parent unassigned: the tuple must stop there.
+        state = {parents[0]: fitted_builder.get_values(parents[0])[0]}
+        for later in parents[2:]:
+            state[later] = fitted_builder.get_values(later)[0]
+
+        key = _parent_values(fitted_builder, "final_disposition", state)
+        assert len(key) == 1
+        assert key == (state[parents[0]],)
+
+    def test_substitute_overrides_without_mutating_state(self, fitted_builder):
+        from src.inference import _parent_values
+
+        parents = fitted_builder.get_parents("final_disposition")
+        state = {p: fitted_builder.get_values(p)[0] for p in parents}
+        before = dict(state)
+
+        candidate = fitted_builder.get_values(parents[1])[-1]
+        key = _parent_values(
+            fitted_builder, "final_disposition", state, substitute=(parents[1], candidate)
+        )
+
+        assert key[1] == candidate
+        assert len(key) == len(parents)
+        assert state == before, "substitution leaked into the sampler's state"
+
+    def test_gibbs_matches_exact_on_a_node_with_many_parents(
+        self, fitted_builder, exact_engine
+    ):
+        """End-to-end check that the corrected blanket targets the right posterior.
+
+        Evidence is placed on a *child* of the outcome, so the outcome's own
+        full conditional has to be scored through its children — the code path
+        the perforated key corrupted.
+        """
+        evidence = {"decision_type": fitted_builder.get_values("decision_type")[0]}
+        exact = exact_engine.query("final_disposition", evidence)
+        gibbs = GibbsSampler(fitted_builder, random_state=5).query(
+            "final_disposition", evidence, n_samples=20000
+        )
+        assert total_variation_distance(exact, gibbs) < 0.05
+
 
 class TestSamplerConvergenceHelper:
     def test_returns_curve_per_engine(self, fitted_builder):

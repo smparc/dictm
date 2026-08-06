@@ -3,7 +3,11 @@
 
 import json
 import os
+import subprocess
+import sys
 import tempfile
+import textwrap
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,6 +15,8 @@ import pytest
 
 from src.cpt_builder import CPTBuilder, _sort_key
 from src.network_structure import TOPOLOGICAL_ORDER
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestCPTBuilder:
@@ -109,6 +115,37 @@ class TestCPTBuilder:
 
         for node in fitted_builder._value_sets:
             assert loaded.get_values(node) == fitted_builder.get_values(node)
+
+    def test_value_order_is_stable_across_processes(self, fitted_builder, tmp_path):
+        """The check that actually catches the original bug.
+
+        Python randomises string hashing per interpreter, so set-iteration order
+        is stable *within* a process and varies *between* them. A same-process
+        repeat therefore cannot detect the defect; only running under two
+        different `PYTHONHASHSEED` values can.
+        """
+        path = tmp_path / "cpts.json"
+        fitted_builder.save(str(path))
+
+        script = textwrap.dedent(
+            f"""
+            import json, sys
+            sys.path.insert(0, {str(REPO_ROOT)!r})
+            from src.cpt_builder import CPTBuilder
+            builder = CPTBuilder.load({str(path)!r})
+            print(json.dumps({{n: list(builder.get_values(n)) for n in builder._value_sets}}))
+            """
+        )
+
+        def run(hash_seed: str) -> str:
+            env = {**os.environ, "PYTHONHASHSEED": hash_seed}
+            out = subprocess.run(
+                [sys.executable, "-c", script],
+                capture_output=True, text=True, check=True, env=env,
+            )
+            return out.stdout.strip()
+
+        assert run("1") == run("999999")
 
 
     def test_query_root(self, fitted_builder):
