@@ -132,23 +132,39 @@ Likelihood Weighting          0.1134    0.0354    0.0164    0.0132
 Gibbs Sampling (MCMC)         0.1045    0.0376    0.0226    0.0136
 ```
 
-Total-variation distance from the exact posterior. Likelihood weighting and Gibbs
-converge monotonically and reproduce exactly on every run. **Rejection sampling does
-neither**, and the row above is one observed run rather than a fixed result — repeated
-invocations of `--mode convergence` have produced `0.5486 / 0.8192 / 0.8192 / 0.1514`
-and `0.5486 / 0.5486 / 0.9087 / 0.2269` from the same seed.
+Total-variation distance from the exact posterior. All three engines now reproduce
+exactly, run to run and process to process.
 
-That instability is itself the finding. `CPTBuilder.get_values` returns a **set**, so
-nodes with string values iterate in an order that Python's hash randomisation varies
-per process. Which index a given RNG draw maps to therefore changes between runs. The
-weighted samplers are unaffected — they aggregate over every value — but rejection
-sampling accepts only a handful of samples out of thousands, so the ordering decides
-the answer. Sorting the value sets would make it deterministic, at the cost of
-remapping every sampler's draws and shifting the numbers in the tables above.
+**That was not true until recently, and the reason is worth recording.**
+`CPTBuilder.get_values` returned a **set**, so nodes with string values iterated in an
+order that Python's per-process hash randomisation varied. The samplers build a
+probability vector by iterating a node's values and then draw an *index* into it, so
+which value a given RNG draw selected changed between processes. The weighted samplers
+were unaffected — they aggregate over every value — but rejection sampling accepts a
+handful of samples out of thousands, so the ordering decided the answer outright:
+repeated invocations of `--mode convergence` produced `0.5486 / 0.8192 / 0.8192 / 0.1514`
+on one run and `0.5486 / 0.5486 / 0.9087 / 0.2269` on the next, from the same seed.
+
+`_value_sets` now holds a sorted tuple. Two runs under `PYTHONHASHSEED=1` and
+`PYTHONHASHSEED=987654` produce the table above character for character, and every
+headline figure elsewhere in this README is unchanged. A same-process repeat cannot
+detect the original defect — string hashing is randomised per interpreter, not per call —
+so `test_value_order_is_stable_across_processes` spawns two subprocesses under different
+hash seeds, which is the only arrangement that fails on the old code.
 
 Rejection sampling's collapse on the explanatory track (TV ≈ 0.55, and 1,400× slower
-than exact) is the textbook failure mode made measurable: with nine evidence variables,
-almost every sample is discarded — and what survives is too few to be stable.
+than exact) remains: it is the textbook failure mode made measurable. With nine evidence
+variables almost every sample is discarded, and what survives is too few to be accurate —
+but it is now *reliably* too few, which is a different and much more useful statement.
+
+A second defect fell out of the same review. `GibbsSampler._compute_full_conditional`
+built each child's parent key by hand, iterating `NODES[child].parents` and **skipping**
+any co-parent absent from the current state. That produces a tuple with a hole in it,
+and `query_child` backs off along *prefixes* — so a perforated key does not degrade to a
+shallower estimate, it addresses a different configuration entirely and returns a
+confident wrong number, biasing the chain away from the posterior it targets. It now
+routes through `_parent_values`, the helper written for exactly this hazard, with an
+explicit `substitute=` for the candidate value being scored.
 
 Exact inference is also the right default here. When all of a leaf's parents are observed, the posterior is a single CPT row — and the sampling engines were spending 1,000 draws to approximate a dictionary lookup.
 
@@ -270,7 +286,7 @@ python main.py --mode train_eval --visualize
 ### Development
 
 ```bash
-pytest                                       # 201 tests
+pytest                                       # 210 tests
 pytest --cov=src --cov=app                   # 90% coverage
 ruff check src app tests main.py scripts     # lint
 ```
@@ -309,7 +325,7 @@ dictm/
 │   └── visualize.py             Figures
 ├── app/server.py                FastAPI + self-contained HTML page
 ├── scripts/fetch_data.py        SCDB download
-├── tests/                       201 tests, 90% coverage
+├── tests/                       210 tests, 90% coverage
 │   ├── conftest.py              Synthetic SCDB-shaped fixtures with real signal
 │   ├── test_exact.py            Exact inference + sampler convergence against it
 │   ├── test_metrics.py          Scoring rules checked against hand-computed values
