@@ -102,7 +102,19 @@ class CPTBuilder:
         self.equivalent_sample_size = equivalent_sample_size
 
         self.cpts: dict = {}
-        self._value_sets: dict = {}   # node -> set of observed values
+        # node -> observed values, as a *sorted tuple*.
+        #
+        # Ordering is load-bearing, which is why this is not a set. The samplers
+        # build a probability vector by iterating a node's values and then draw
+        # an index into it. With a set, nodes holding string values iterate in an
+        # order that Python's per-process hash randomisation varies, so the same
+        # RNG draw selected a different value on every run: `--mode convergence`
+        # produced TV distances of 0.5486 / 0.8192 / 0.8192 / 0.1514 on one run
+        # and 0.5486 / 0.5486 / 0.9087 / 0.2269 on the next, from the same seed.
+        # Likelihood weighting and Gibbs aggregate over every value and so were
+        # unaffected; rejection sampling accepts a handful of samples out of
+        # thousands, and the ordering decided its answer outright.
+        self._value_sets: dict = {}
         self._parents: dict = {}      # node -> ordered parents actually used
         self._marginals: dict = {}    # node -> {value: smoothed marginal}
         self._levels: dict = {}       # node -> [level-0 table, ..., level-k table]
@@ -133,7 +145,7 @@ class CPTBuilder:
         for node_name in TOPOLOGICAL_ORDER:
             if node_name in data.columns:
                 values = {_py(v) for v in data[node_name].dropna().unique()}
-                self._value_sets[node_name] = values
+                self._value_sets[node_name] = tuple(sorted(values, key=_sort_key))
 
         for node_name in TOPOLOGICAL_ORDER:
             if node_name not in data.columns:
@@ -297,8 +309,14 @@ class CPTBuilder:
         self._backoff_hits += 1
         return self.query_root(node_name, child_value)
 
-    def get_values(self, node_name: str) -> set:
-        return self._value_sets.get(node_name, set())
+    def get_values(self, node_name: str) -> tuple:
+        """This node's observed values, in a fixed, reproducible order.
+
+        A tuple rather than a set, deliberately. Callers index into the result
+        to map an RNG draw onto a value, so an unordered return type makes a
+        seeded run irreproducible across processes. See `_value_sets`.
+        """
+        return self._value_sets.get(node_name, ())
 
     def get_parents(self, node_name: str) -> list:
         """The parents actually used for this node (those present in the data)."""
@@ -377,7 +395,13 @@ class CPTBuilder:
             backoff=data.get("backoff", True),
             equivalent_sample_size=data.get("equivalent_sample_size", 5.0),
         )
-        builder._value_sets = {k: set(v) for k, v in data["values"].items()}
+        # Re-sorted on load rather than trusted from the file: a model saved by
+        # an older build stored an unordered set, and JSON preserves whatever
+        # order that happened to serialise in.
+        builder._value_sets = {
+            k: tuple(sorted({_py(x) for x in v}, key=_sort_key))
+            for k, v in data["values"].items()
+        }
         builder._parents = data.get("parents", {})
         builder._marginals = {
             node: cls._table_from_json(entries, tuple_keys=False)

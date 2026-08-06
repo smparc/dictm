@@ -40,7 +40,13 @@ from src.network_structure import NODES, TOPOLOGICAL_ORDER
 log = logging.getLogger(__name__)
 
 
-def _parent_values(cpt: CPTBuilder, node_name: str, assignment: dict) -> tuple:
+def _parent_values(
+    cpt: CPTBuilder,
+    node_name: str,
+    assignment: dict,
+    *,
+    substitute: tuple[str, object] | None = None,
+) -> tuple:
     """
     Build the parent-value tuple in the exact order the CPT was keyed on.
 
@@ -53,13 +59,22 @@ def _parent_values(cpt: CPTBuilder, node_name: str, assignment: dict) -> tuple:
     that parent skipped. A truncated tuple is still a valid *prefix*, which is
     what `CPTBuilder.query_child` backs off along; a tuple with a hole in it is
     not, and would resolve to a different configuration entirely.
+
+    `substitute` overrides one parent's value without mutating `assignment`.
+    Gibbs sampling needs exactly this: scoring a candidate value for X requires
+    each of X's children re-evaluated *as if* X held that candidate.
     """
     parents = cpt.get_parents(node_name) or NODES[node_name].parents
+    override_name, override_value = substitute if substitute is not None else (None, None)
+
     values = []
     for parent in parents:
-        if parent not in assignment:
+        if parent == override_name:
+            values.append(override_value)
+        elif parent in assignment:
+            values.append(assignment[parent])
+        else:
             break
-        values.append(assignment[parent])
     return tuple(values)
 
 
@@ -448,20 +463,30 @@ class GibbsSampler:
 
             # Multiply by P(child | child_parents) for each child
             for child_name in self._children_cache.get(node_name, []):
-                child_node = NODES[child_name]
                 child_val = state.get(child_name)
                 if child_val is None:
                     continue
 
 
-                # Build parent values for the child, substituting our candidate val
-                child_parent_vals = []
-                for cp in child_node.parents:
-                    if cp == node_name:
-                        child_parent_vals.append(val)
-                    elif cp in state:
-                        child_parent_vals.append(state[cp])
-                child_parent_vals = tuple(child_parent_vals)
+                # Built through `_parent_values` rather than by hand. Two things
+                # that hand-rolled loop got wrong, both silent:
+                #
+                #   * it iterated `NODES[child].parents`, not the parents the
+                #     builder actually fitted on, so any parent dropped for
+                #     absent training data shifted every later value one slot
+                #     left in the key;
+                #   * an unassigned co-parent was *skipped*, producing a tuple
+                #     with a hole. `query_child` backs off along prefixes, so a
+                #     hole does not degrade gracefully — it addresses a
+                #     different configuration and returns a confident wrong
+                #     number.
+                #
+                # Either way the Markov-blanket score was computed against the
+                # wrong CPT cells, which biases the chain's stationary
+                # distribution away from the posterior it is supposed to target.
+                child_parent_vals = _parent_values(
+                    self.cpt, child_name, state, substitute=(node_name, val)
+                )
 
 
                 p *= self.cpt.query_child(child_name, child_parent_vals, child_val)
