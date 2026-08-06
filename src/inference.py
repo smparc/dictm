@@ -430,9 +430,13 @@ class GibbsSampler:
             if node_name in evidence:
                 state[node_name] = evidence[node_name]
             else:
-                values = list(self.cpt.get_values(node_name))
+                values = self.cpt.get_values(node_name)
                 if values:
-                    state[node_name] = self.rng.choice(values)
+                    # Draw an index, not the value. `rng.choice(values)` builds a
+                    # numpy array first, and a node whose domain mixes ints and
+                    # strings coerces to a string dtype — turning the integer 1
+                    # into "1", which then matches no CPT key at all.
+                    state[node_name] = values[self.rng.choice(len(values))]
         return state
 
 
