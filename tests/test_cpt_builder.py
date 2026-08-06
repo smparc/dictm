@@ -84,6 +84,32 @@ class TestCPTBuilder:
         assert len(vals) > 0
         assert "Roberts" in vals
 
+    def test_get_values_has_a_deterministic_order(self, fitted_builder):
+        """The samplers index into this, so an unordered return type is a bug.
+
+        `get_values` used to return a set. The samplers build a probability
+        vector by iterating it and then draw an *index* into that vector, so with
+        string-valued nodes the mapping from RNG draw to value shifted with every
+        process — Python randomises string hashing per interpreter. Rejection
+        sampling, which survives on a handful of accepted samples, changed its
+        answer run to run from a fixed seed.
+        """
+        assert isinstance(fitted_builder.get_values("chief_justice"), tuple)
+
+        for node in ("chief_justice", "issue_area", "final_disposition"):
+            values = fitted_builder.get_values(node)
+            assert list(values) == sorted(values, key=_sort_key)
+            # Same object, asked twice, must not reshuffle.
+            assert values == fitted_builder.get_values(node)
+
+    def test_value_order_survives_a_save_load_round_trip(self, fitted_builder, tmp_path):
+        path = tmp_path / "cpts.json"
+        fitted_builder.save(str(path))
+        loaded = CPTBuilder.load(str(path))
+
+        for node in fitted_builder._value_sets:
+            assert loaded.get_values(node) == fitted_builder.get_values(node)
+
 
     def test_query_root(self, fitted_builder):
         prob = fitted_builder.query_root("chief_justice", "Roberts")

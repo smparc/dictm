@@ -109,7 +109,7 @@ class RejectionSampler:
         sampled value
         """
         node = NODES[node_name]
-        values = list(self.cpt.get_values(node_name))
+        values = self.cpt.get_values(node_name)
         if not values:
             return None
 
@@ -200,7 +200,7 @@ class RejectionSampler:
 
         if n_accepted == 0:
             # No accepted samples — return uniform over known values
-            values = list(self.cpt.get_values(query_var))
+            values = self.cpt.get_values(query_var)
             return {v: 1.0 / len(values) for v in values} if values else {}
 
 
@@ -255,7 +255,7 @@ class LikelihoodWeightingSampler:
     def _sample_node(self, node_name: str, assignment: dict):
         """Sample a value for a non-evidence node given its parents."""
         node = NODES[node_name]
-        values = list(self.cpt.get_values(node_name))
+        values = self.cpt.get_values(node_name)
         if not values:
             return None
 
@@ -356,7 +356,7 @@ class LikelihoodWeightingSampler:
 
 
         if total_weight == 0:
-            values = list(self.cpt.get_values(query_var))
+            values = self.cpt.get_values(query_var)
             return {v: 1.0 / len(values) for v in values} if values else {}
 
 
@@ -450,7 +450,7 @@ class GibbsSampler:
         its own CPT entry times the CPT entries of all its children.
         """
         node = NODES[node_name]
-        values = list(self.cpt.get_values(node_name))
+        values = self.cpt.get_values(node_name)
         if not values:
             return {}
 
@@ -568,7 +568,7 @@ class GibbsSampler:
 
         total = sum(counts.values())
         if total == 0:
-            values = list(self.cpt.get_values(query_var))
+            values = self.cpt.get_values(query_var)
             return {v: 1.0 / len(values) for v in values} if values else {}
 
 

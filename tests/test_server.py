@@ -24,7 +24,9 @@ class TestBuildSchema:
     def test_options_cover_the_observed_values(self, exact_engine, fitted_builder):
         schema = build_schema(exact_engine)
         field = next(f for f in schema["fields"] if f["name"] == "issue_area")
-        assert {o["value"] for o in field["options"]} == fitted_builder.get_values("issue_area")
+        assert {o["value"] for o in field["options"]} == set(
+            fitted_builder.get_values("issue_area")
+        )
 
     def test_options_carry_human_readable_labels(self, exact_engine):
         schema = build_schema(exact_engine)
